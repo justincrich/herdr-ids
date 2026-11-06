@@ -56,7 +56,7 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 |---|---|
 | `mods/ids-menu` | the copy menus (IDs, path, relative path) |
 | `mods/ids-agents` | Agents sidebar with the right-click menu |
-| `mods/ids-files` | Files panel with the right-click menu |
+| `mods/ids-files` | Files panel: right-click menu, a glyph per file kind, and an open/selected state |
 | `mods/ids-spaces`, `mods/ids-tabs`, `mods/ids-terminals-bar` | shipped panels repointed at `ids-menu` |
 | `mods/ids-sidebar` | the Spaces/Agents tab strip: both lists in one sidebar panel, switched by tabs |
 | `mods/ids-workspace-chrome` | the brand row: Search, Settings gear, and the sidebar toggle, all in the top-left |

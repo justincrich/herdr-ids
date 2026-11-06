@@ -13,6 +13,70 @@ const key = () => JSON.stringify(location());
 const LANG = { ts: "js", tsx: "js", mts: "js", cts: "js", jsx: "js", mjs: "js", toml: "yaml", jsonc: "json", svelte: "html", vue: "html" };
 const PER_FOLDER = 500, TOTAL = 5000;
 
+// The glyphs in icons/ are copied into the app directory as ids-icons/ by
+// install.sh. svg() reads from the app root and refuses a path that resolves
+// outside it, and mods/ids-* is a link into this checkout, so the SVGs cannot
+// be served from beside this file.
+const ICONS = "ids-icons";
+// Each kind of file gets its own silhouette rather than a mark inside a file
+// outline: at 14px a mark drawn in the 24 box is a blur. Full-size lucide
+// shapes stay apart at that size, and the tint tells the families apart faster
+// than the outline does.
+const TYPE = {
+  js: "code", jsx: "code", mjs: "code", cjs: "code", ts: "code", tsx: "code", mts: "code", cts: "code",
+  py: "code", pyi: "code", rb: "code", go: "code", rs: "code", java: "code", kt: "code", kts: "code",
+  swift: "code", c: "code", h: "code", cc: "code", cpp: "code", hpp: "code", cs: "code", m: "code",
+  php: "code", lua: "code", r: "code", scala: "code", clj: "code", cljs: "code", ex: "code", exs: "code",
+  hs: "code", ml: "code", mli: "code", dart: "code", zig: "code", nix: "code",
+  sh: "terminal", bash: "terminal", zsh: "terminal", fish: "terminal", nu: "terminal", ps1: "terminal", bat: "terminal", cmd: "terminal",
+  html: "code-xml", htm: "code-xml", xml: "code-xml", vue: "code-xml", svelte: "code-xml", astro: "code-xml",
+  json: "braces", jsonc: "braces", json5: "braces", ndjson: "braces", ipynb: "braces",
+  yaml: "sliders-horizontal", yml: "sliders-horizontal", toml: "sliders-horizontal", ini: "sliders-horizontal",
+  cfg: "sliders-horizontal", conf: "sliders-horizontal", env: "sliders-horizontal", properties: "sliders-horizontal", plist: "sliders-horizontal",
+  css: "hash", scss: "hash", sass: "hash", less: "hash", styl: "hash",
+  csv: "table", tsv: "table", xls: "table", xlsx: "table", numbers: "table", parquet: "table",
+  sql: "database", db: "database", sqlite: "database", sqlite3: "database", duckdb: "database",
+  md: "book-text", mdx: "book-text", markdown: "book-text", rst: "book-text", adoc: "book-text",
+  txt: "file-text", text: "file-text", log: "file-text", pdf: "file-text", doc: "file-text", docx: "file-text", rtf: "file-text", pages: "file-text",
+  png: "image", jpg: "image", jpeg: "image", gif: "image", webp: "image", avif: "image", svg: "image",
+  ico: "image", bmp: "image", tif: "image", tiff: "image", heic: "image",
+  mp3: "audio-lines", wav: "audio-lines", flac: "audio-lines", m4a: "audio-lines", aac: "audio-lines",
+  ogg: "audio-lines", opus: "audio-lines", aiff: "audio-lines",
+  zip: "archive", tar: "archive", gz: "archive", tgz: "archive", bz2: "archive", xz: "archive",
+  zst: "archive", "7z": "archive", rar: "archive", dmg: "archive",
+  lock: "lock", lockb: "lock",
+};
+// A whole name the extension cannot tell apart.
+const NAME = {
+  ".gitignore": "sliders-horizontal", ".gitattributes": "sliders-horizontal", ".gitmodules": "sliders-horizontal",
+  ".npmrc": "sliders-horizontal", ".nvmrc": "sliders-horizontal", ".editorconfig": "sliders-horizontal",
+  ".zshrc": "sliders-horizontal", ".bashrc": "sliders-horizontal", ".profile": "sliders-horizontal",
+  ".env": "sliders-horizontal", "dockerfile": "sliders-horizontal", "makefile": "sliders-horizontal",
+  "cmakelists.txt": "sliders-horizontal", "package-lock.json": "lock", "yarn.lock": "lock",
+  "pnpm-lock.yaml": "lock", "bun.lockb": "lock", "cargo.lock": "lock", "gemfile.lock": "lock",
+  "poetry.lock": "lock", "uv.lock": "lock", "composer.lock": "lock",
+  license: "file-text", licence: "file-text", notice: "file-text",
+};
+// The colour each family wears, from the theme, so both themes follow.
+const TINT = {
+  code: "ansi4", terminal: "ansi4", "code-xml": "ansi3", braces: "ansi3", table: "ansi2",
+  database: "ansi2", hash: "ansi5", "sliders-horizontal": "ansi5", "book-text": "ansi6",
+  image: "ansi1", "audio-lines": "ansi1",
+};
+
+function iconFor(name, dir, open) {
+  if (dir) return open ? "folder-open" : "folder";
+  const lower = name.toLowerCase();
+  if (NAME[lower]) return NAME[lower];
+  const dot = lower.lastIndexOf(".");
+  return (dot > 0 && TYPE[lower.slice(dot + 1)]) || "file";
+}
+// A selected row asks for the same glyph at a 3 stroke instead of a 2: a stroke
+// width is part of the file, so install.sh writes the heavier copy beside it.
+const glyph = (icon, bold) => `${ICONS}/${icon}${bold ? "-bold" : ""}.svg`;
+const base = path => path.slice(path.lastIndexOf("/") + 1);
+const inkOf = (icon, t, fallback = "muted") => (TINT[icon] && t[TINT[icon]]) || t[fallback];
+
 async function directory(path, on) {
   const windowsDirectory = async () => {
     // Windows PowerShell otherwise uses the console code page; exec decodes UTF-8.
@@ -152,12 +216,15 @@ export default class Files extends View {
     for (const entry of this.entries.get(prefix) ?? []) {
       if (out.length >= TOTAL) break;
       const path = prefix ? `${prefix}/${entry.name}` : entry.name, open = this.folders.has(path), mark = this.marks[`${this.root}/${path}`];
-      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().rounded(7).cursor_pointer().hover(s => s.bg(t.hover))
+      const icon = iconFor(entry.name, entry.dir, open), shown = !entry.dir && this.file === path;
+      const ink = entry.dir ? (open ? t.foreground : t.muted) : inkOf(icon, t);
+      out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().rounded(7).cursor_pointer()
+        .when(shown, el => el.bg(t.selection)).hover(s => s.bg(t.hover))
         .on_click((_e, cx) => entry.dir ? this.toggle(path, cx) : this.show(path, cx))
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ids-menu", kind: "popup", width: 200, props: { tab: "files", target: { path, root: this.root } } }); })
-        .child(entry.dir ? svg(`mods/ids-files/chevron-${open ? "down" : "right"}.svg`).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
-        .child(svg(`mods/ids-files/${entry.dir ? "folder" : "file"}.svg`).size(14).flex_none().text_color(t.muted))
-        .child(div().flex_1().min_w(0).truncate().child(entry.name))
+        .child(entry.dir ? svg(glyph(`chevron-${open ? "down" : "right"}`)).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
+        .child(svg(glyph(icon, shown)).size(14).flex_none().text_color(ink))
+        .child(div().flex_1().min_w(0).truncate().when(shown, el => el.font_semibold().text_color(t.foreground)).child(entry.name))
         .when(Boolean(mark), el => el.child(div().text_size(11).text_color(mark === "A" ? t.ansi2 : mark === "D" || mark === "U" ? t.ansi1 : t.blocked).child(mark))));
       if (entry.dir && open) this.rows(path, depth + 1, out, t);
     }
@@ -166,12 +233,18 @@ export default class Files extends View {
 
   render(cx) {
     if (key() !== this.context?.key) this.refresh(cx);
-    const t = theme();
+    const t = theme(), file = this.file, name = file ? base(file) : "", icon = file ? iconFor(name) : null;
+    const parent = file?.includes("/") ? file.slice(0, file.lastIndexOf("/")) : null;
+    // The tree gives way to the preview, so the header carries the file the tree
+    // would have marked: the same glyph in its heavier stroke, the name in semibold.
     return v_flex().id("files").size_full().min_h(0).rounded(10).overflow_hidden().bg(t.background).border_1().border_color(t.border).text_color(t.foreground).text_size(13)
       .child(h_flex().h(42).flex_none().px(14).gap(8).items_center().border_b(1).border_color(t.border)
-        .when(Boolean(this.file), el => el.child(div().id("files-back").w(20).cursor_pointer().text_color(t.muted).on_click((_e, cx) => { this.show(null); cx.notify(); }).child("←")))
-        .child(div().font_semibold().child("Files"))
-        .child(div().flex_1().min_w(0).truncate().text_right().text_size(12).text_color(t.dim).child(this.file ?? this.root?.split(/[\\/]/).pop() ?? "")))
+        .when(Boolean(file), el => el.child(div().id("files-back").w(20).cursor_pointer().text_color(t.muted).hover(s => s.text_color(t.foreground)).on_click((_e, cx) => { this.show(null); cx.notify(); }).child("←")))
+        .when(Boolean(file), el => el.child(svg(glyph(icon, true)).size(14).flex_none().text_color(inkOf(icon, t, "foreground"))))
+        .when(Boolean(file), el => el.child(div().flex_1().min_w(0).truncate().font_semibold().child(name)))
+        .when(!file, el => el.child(div().font_semibold().child("Files")))
+        .when(!file, el => el.child(div().flex_1().min_w(0).truncate().text_right().text_size(12).text_color(t.dim).child(this.root?.split(/[\\/]/).pop() ?? "")))
+        .when(Boolean(parent), el => el.child(div().flex_none().max_w(120).truncate().text_size(12).text_color(t.dim).child(parent))))
       .when(!this.file, el => el.child(v_flex().id("files-tree").flex_1().min_h(0).overflow_y_scrollbar().p(6).children(this.rows("", 0, [], t))
         .when(Boolean(this.error) || !this.entries.get("")?.length, el => el.child(div().p(8).text_size(12).text_color(t.dim).child(this.error || (this.loading ? "Loading files…" : this.root ? "No files" : "No folder"))))
         .when(this.limited, el => el.child(div().p(8).text_size(11).text_color(t.dim).child("File list limited to 500 entries per folder and 5,000 total")))))

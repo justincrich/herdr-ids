@@ -24,6 +24,14 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking an agent row opens the menu; it does not focus or open the agent.
 - Nothing is run and nothing is fetched; the only side effect is the clipboard write.
 
+## Files panel icons
+
+- Every row carries a glyph: a folder, or the kind of file. The set is [Lucide](https://lucide.dev) (ISC, `mods/ids-files/icons/LICENSE-Lucide.txt`), the same family the app's own panels draw, drawn in a 24-unit box with a 2-unit stroke.
+- Each glyph is a **full-size silhouette**, not a mark inside a file outline: at 14px an inner mark shrinks to a blur. `file` stays plain for anything unknown; `book-text` is markdown, `code` code, `terminal` a shell script, `code-xml` markup, `braces` JSON, `sliders-horizontal` config and dotfiles, `hash` stylesheets, `table` spreadsheets, `database` databases, `image` pictures, `audio-lines` audio, `archive` archives, `lock` lockfiles, `file-text` prose.
+- Families also carry a colour from the theme (`ansi1`–`ansi6`), so code, data, styles, prose and media read apart before the outline does. Anything without a family (`file`, `file-text`, `archive`, `lock`) stays in the muted ink, and both themes follow because the names are theme tokens.
+- Two states. A folder shows `folder` closed and `folder-open` when its children are showing, in the foreground ink rather than the muted one. The file the panel is showing gets the same glyph in a **3 stroke** copy, the row's `selection` background, and its name in semibold — and, because the tree gives way to the preview, the header repeats that glyph and name so the file you are reading is still named and still bold.
+- A stroke width is part of an SVG, so the heavier copy is a second file: `install.sh` writes `ids-icons/<name>-bold.svg` from each glyph when it copies the set in. Change a glyph, re-run `install.sh`.
+
 ## Pane names
 
 - A pane can be named. The name replaces the program's own title in that pane's header, and **Copy IDs** on the pane prints it: `pane p2948… (tests) · tab tb471…`.
@@ -42,7 +50,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `layouts/terminals-ids.json` — the same treatment for the `terminals` layout.
 - `mods/ids-menu/` — the context menu. `items()` returns the copy actions; `choose()` calls `cx.write_to_clipboard(...)` and `notify(...)`.
 - `mods/ids-agents/` — the Agents sidebar, with a right-click that opens `ids-menu` with `tab: "agent"`.
-- `mods/ids-files/` — the Files panel, with a right-click that opens `ids-menu` with `tab: "files"`.
+- `mods/ids-files/` — the Files panel, with a right-click that opens `ids-menu` with `tab: "files"`, and a glyph per file kind: `icons/` holds the set, `main.js` maps an extension or a whole name to one, and `install.sh` copies the set into `<app home>/ids-icons` because an SVG inside a symlinked `mods/ids-*` folder never loads (see **Watch out**).
 - `mods/ids-spaces/`, `mods/ids-tabs/`, `mods/ids-terminals-bar/` — the shipped sidebar and tab mods with their menu opens repointed to `ids-menu`.
 - `mods/ids-sidebar/` — the sidebar's tab strip. It replaces Herdr's split left panel: Spaces and Agents are two views of one stack, so only one list fills the height at a time. The strip is the stack's header: each tab carries its own action (New space on Spaces, Sort agents on Agents) and the Agents tab keeps counting agents that need you while Spaces is in front. It narrows to icons, then to a single unfold button, as the sidebar goes to its rail.
 - `mods/ids-workspace-chrome/` — the brand row across the top of the sidebar. Search, the Settings gear, and the sidebar toggle sit together in the top-left; the gear carries an update dot. Add machine moved into Settings → Machines.
@@ -55,7 +63,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 ## Watch out
 
 - `ids-menu` replaces the whole terminal menu; it does not merge with Herdr's items. A menu item added in a later release will not appear until you copy it in.
-- Tab glyphs must live in the app's own asset paths (`icons/…`, `mods/workspace-chrome/…`). An SVG inside a symlinked `mods/ids-*` folder does not load in the installed app, so the tab strip renders text-only.
+- A mod's own SVGs must be copied into the app home first. `svg()` reads from the app directory and refuses a path that resolves outside it, and a linked `mods/ids-*` folder points back into this checkout, so the tab strip renders text-only and the Files panel asks for `ids-icons/…` instead of `mods/ids-files/icons/…`. `install.sh` writes that copy; a `--copy` install has the same rule, so both modes use it.
 - These are personal copies of shipped code. When Herdr ships menu or sidebar changes, re-copy `defaults/mods/*/main.js` and re-apply the right-click lines.
 - Pane names belong to this app home (`shared.json`): another machine's Herdr does not see them. They follow the pane id, so closing a pane drops its name's meaning even before the entry is pruned.
 - Naming a pane changes only its header and the ID block; the program's own title, the tab's name, and the agent's name are untouched.
@@ -68,5 +76,6 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking a space shows **Copy IDs** first; pasting yields a block with the space id and an `hc read … --lines 200` line.
 - Right-clicking an agent row opens a popup with **Copy IDs**, **Copy terminal address**, and, when reported, **Copy agent session**.
 - Right-clicking a file shows **Copy path** and **Copy relative path**.
+- The Files panel shows a glyph on every row, a `folder-open` on an expanded folder, and the file you opened in a heavier glyph and semibold name.
 - Right-clicking a pane shows **Copy IDs** first and **Rename pane** second; saving a name shows it in that pane's header and in the copied block, and saving an empty one puts the program's title back.
 - `herdr-app status` reports no mod errors.
