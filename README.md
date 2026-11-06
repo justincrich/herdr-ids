@@ -24,23 +24,29 @@ Revert any time with `herdr-app do layout.switch --name main`.
 
 ## Standardize across devices
 
-`scripts/sync.sh` installs this exact build into this machine and any named `hc` machine, switches their layout, and prints the version, layout and mod errors for each:
+Each device keeps its own checkout of this repo at `~/.local/share/herdr-ids` and **pulls** it. `bootstrap.sh` clones on the first run, pulls on later runs, installs, and switches the layout:
 
 ```sh
-./scripts/sync.sh                 # this machine
-./scripts/sync.sh holocron        # this machine + holocron
+curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
+```
+
+From any synced machine, `scripts/sync.sh` tells each device to do that pull:
+
+```sh
+./scripts/sync.sh                 # this device
+./scripts/sync.sh holocron        # this device + holocron
 ./scripts/sync.sh --all           # every connected machine that has Herdr
 ```
 
-Output is one line per machine:
+Output is one line per device:
 
 ```
-herdr-ids 1.0.0
+herdr-ids (repo: https://github.com/justincrich/herdr-ids)
 local        1.0.0   layout=main-ids errors=[]
 holocron     1.0.0   layout=main-ids errors=[]
 ```
 
-`VERSION` is the build's version; `install.sh` writes it to `<app home>/.herdr-ids-version` so each machine can say what it runs. Machines without Herdr are reported and skipped.
+The repo is the source of truth: commit and push before syncing, or remote devices pull the previous push. The script warns when the local tree is dirty. Each device records its build in `<app home>/.herdr-ids-version`; machines without Herdr are reported and skipped.
 
 Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whole standardization loop: one repo, one command, every machine on the same build.
 
@@ -61,21 +67,19 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 ## Adding a machine
 
 ```sh
-git clone https://github.com/justincrich/herdr-ids
-cd herdr-ids && ./install.sh
-herdr-app do layout.switch --name main-ids
+curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
 ```
 
-Or from an already-synced machine: `./scripts/sync.sh <machine>` carries the files over `hc`, so the target needs no clone.
+That clones into `~/.local/share/herdr-ids`, installs, and switches the layout. From a synced machine, `./scripts/sync.sh <machine>` runs the same bootstrap there, so the target clones itself.
 
 ## Day 2
 
 1. Change a mod.
 2. Bump `VERSION`.
-3. `./scripts/sync.sh --all`
-4. `git commit -am "…" && git push`
+3. `git commit -am "…" && git push`
+4. `./scripts/sync.sh --all`
 
-Everything else follows from the repo being the single source.
+Push first: each device pulls from the repo, so a device only gets what is pushed.
 
 ## Publishing notes
 

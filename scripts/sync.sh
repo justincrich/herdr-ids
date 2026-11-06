@@ -1,12 +1,11 @@
 #!/usr/bin/env sh
-# Make this machine and the named hc machines run the same herdr-ids build.
-#   ./scripts/sync.sh                 # this machine
-#   ./scripts/sync.sh holocron        # this machine + holocron
+# Make this device and the named hc machines pull the published herdr-ids build.
+#   ./scripts/sync.sh                 # this device
+#   ./scripts/sync.sh holocron        # this device + holocron
 #   ./scripts/sync.sh --all           # every connected machine that has Herdr
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
-version=$(cat "$here/VERSION" 2>/dev/null || echo unknown)
-layout=main-ids
+raw=https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh
 
 status_line() {
   python3 -c 'import json,sys
@@ -18,9 +17,8 @@ except Exception:
 }
 
 install_here() {
-  "$here/install.sh" >/dev/null
-  herdr-app do layout.switch --name "$layout" >/dev/null 2>&1 || true
-  printf '%-12s %-7s ' local "$version"
+  HERDR_IDS_DIR="$here" "$here/bootstrap.sh" >/dev/null
+  printf '%-12s %-7s ' local "$(cat "$here/VERSION")"
   herdr-app status 2>/dev/null | status_line
 }
 
@@ -34,10 +32,8 @@ install_remote() {
     printf '%-12s %-7s skipped (no Herdr)\n' "$m" "-"
     return 0
   fi
-  tar czf - -C "$here" mods layouts | hc exec -i --on "$m" sh -c 'cd ~/.config/herdr-app && tar xzf -' >/dev/null
-  hc exec --on "$m" sh -c "printf '%s\n' '$version' > ~/.config/herdr-app/.herdr-ids-version" >/dev/null
-  hc exec --on "$m" herdr-app do layout.switch --name "$layout" >/dev/null 2>&1 || true
-  printf '%-12s %-7s ' "$m" "$version"
+  hc exec --on "$m" sh -c "curl -fsSL $raw | sh" >/dev/null
+  printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/.local/share/herdr-ids/VERSION')"
   hc exec --on "$m" herdr-app status 2>/dev/null | status_line
 }
 
@@ -54,6 +50,10 @@ print(" ".join(m["name"] for m in json.load(sys.stdin).get("machines",[]) if m.g
   esac
 done
 
-echo "herdr-ids $version"
+if [ -n "$(git -C "$here" status --porcelain 2>/dev/null)" ]; then
+  echo "warning: local changes are not pushed; remote devices get the repo's version" >&2
+fi
+
+echo "herdr-ids (repo: https://github.com/justincrich/herdr-ids)"
 install_here
 for m in $targets; do install_remote "$m"; done
