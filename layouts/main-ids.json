@@ -41,7 +41,7 @@
         {
           "id": "sidebar-lists",
           "type": "stack",
-          "active": "spaces",
+          "active": "agents",
           "header": {
             "content": {
               "mod": "ids-sidebar",
@@ -53,19 +53,19 @@
           },
           "children": [
             {
-              "id": "spaces",
-              "title": "Spaces",
-              "type": "block",
-              "content": {
-                "mod": "ids-spaces"
-              }
-            },
-            {
               "id": "agents",
               "title": "Agents",
               "type": "block",
               "content": {
                 "mod": "ids-agents"
+              }
+            },
+            {
+              "id": "spaces",
+              "title": "Spaces",
+              "type": "block",
+              "content": {
+                "mod": "ids-spaces"
               }
             }
           ]

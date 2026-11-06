@@ -17,10 +17,12 @@ function find(node, id) {
 }
 
 // What each sidebar view is called and drawn as. A child nobody knows (someone
-// else's layout) is named by its own title or id.
+// else's layout) is named by its own title or id. Icons come from the app's own
+// icon set: a mod's private folder is symlinked into the app home and its assets
+// do not resolve there, so the strip borrows the shipped glyphs instead.
 const TABS = {
-  spaces: { label: "Spaces", icon: "mods/ids-sidebar/spaces.svg" },
-  agents: { label: "Agents", icon: "mods/ids-sidebar/agent.svg" },
+  agents: { label: "Agents", icon: "icons/agent.svg" },
+  spaces: { label: "Spaces", icon: "mods/workspace-chrome/layers.svg" },
 };
 
 // The two ways the agents list sorts, so the strip's icon says which is on.

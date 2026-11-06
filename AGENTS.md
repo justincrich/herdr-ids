@@ -105,9 +105,23 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 **`mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar`**
 - `mod: "menu"` becomes `mod: "ids-menu"`
 
+**`mods/ids-sidebar/main.js`** (new)
+- the stack header that draws one tab per sidebar view; clicking calls `layout.select {stack, child}`
+- icons use the app's own assets: `icons/agent.svg` and `mods/workspace-chrome/layers.svg`. A mod's own SVG under a symlinked `mods/ids-*` folder does not resolve in the app home, so keep tab glyphs on app paths
+- each tab carries its active view's action: New space on Spaces, the sort popup on Agents; the Agents tab shows the blocked count
+
+**`mods/ids-workspace-chrome/main.js`** (new)
+- the brand row: Search, the Settings gear (with an update dot), and the panel-left sidebar toggle
+- the shipped footer (Settings + Add machine) is gone; adding a machine lives in Settings → Machines
+
+**`mods/ids-spaces`, `mods/ids-agents`**
+- no internal title header: the tab strip above is the only header for the stack
+- `ids-spaces` keeps only its machine rows and the New space there action
+
 **Layouts**
 - root `terminal_menu: "ids-menu"`
 - blocks reference `ids-spaces`, `ids-agents`, `ids-tabs`, `ids-files` (and `ids-terminals-bar` in `terminals-ids.json`)
+- the sidebar's `sidebar-lists` is a `stack` with a `header` mod `ids-sidebar`; children are `agents` then `spaces`, `active` picks the default view
 
 ## Rebase on a new Herdr release
 

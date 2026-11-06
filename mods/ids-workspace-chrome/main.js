@@ -47,6 +47,6 @@ export default class WorkspaceChrome extends View {
         .tooltip("Settings")
         .when(Boolean(update), el => el.child(div().absolute().top(4).right(4).size(6).rounded_full().bg(t.accent)))))
       // On the macOS rail the traffic lights fill the row; the sidebar tabs' button unfolds it.
-      .when(!(collapsed && window()?.platform === "macos"), el => el.child(this.button("sidebar-toggle", svg("mods/workspace-chrome/sidebar.svg").size(15), toggleSidebar).tooltip("Toggle sidebar")));
+      .when(!(collapsed && window()?.platform === "macos"), el => el.child(this.button("sidebar-toggle", svg("mods/workspace-chrome/panel-left.svg").size(15), toggleSidebar).tooltip("Toggle sidebar")));
   }
 }

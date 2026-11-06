@@ -37,6 +37,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 ## Watch out
 
 - `ids-menu` replaces the whole terminal menu; it does not merge with Herdr's items. A menu item added in a later release will not appear until you copy it in.
+- Tab glyphs must live in the app's own asset paths (`icons/…`, `mods/workspace-chrome/…`). An SVG inside a symlinked `mods/ids-*` folder does not load in the installed app, so the tab strip renders text-only.
 - These are personal copies of shipped code. When Herdr ships menu or sidebar changes, re-copy `defaults/mods/*/main.js` and re-apply the right-click lines.
 - The payload for a space with many terminals is long; that is deliberate, so a reader with no context can act on it.
 - `clipboard_write` in settings.json gates programs writing the clipboard, not a mod.
