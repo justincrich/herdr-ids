@@ -77,7 +77,8 @@ Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. 
 | `mods/ids-agents/main.js` | Agents sidebar; right-click opens `ids-menu` with `tab: "agent"` |
 | `mods/ids-files/main.js` | Files panel; right-click opens `ids-menu` with `tab: "files"` |
 | `mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar` | shipped panels whose menu open points at `ids-menu` |
-| `mods/ids-pane/main.js` | `main`'s pane header: shipped `pane` header + the pane's own name |
+| `mods/ids-pane/main.js` | `main`'s pane header: shipped `pane` header + the pane's name, its project tag, a right-click menu |
+| `mods/ids-pane/abbr.js` | the project tag (`herdr-ids` → `hid`) and title-as-name helpers; `ids-terminals-pane/abbr.js` is the same file |
 | `mods/ids-terminals-pane/main.js` | the same over the shipped `terminals-pane` header |
 | `mods/ids-rename/main.js` | the rename dialog that writes a pane's name |
 | `layouts/main-ids.json` | `main` layout with `terminal_menu: "ids-menu"` and `ids-*` blocks |
@@ -124,8 +125,10 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 **`mods/ids-pane/main.js`, `mods/ids-terminals-pane/main.js`** (new)
 - a copy of the shipped `pane` / `terminals-pane` header, rendered unchanged except the name
-- `const own = paneNames()[p.pane]` wins over the program name / terminal title
+- the label, in order: the pane's own name (`shared("ids.paneNames")`), the name the terminal was started with (`terminals().find(t => t.address === p.terminal)?.name`, which runners set with `hc run --name`), the agent's own title when it tells you what it is doing (`tells`/`cleanTitle` in `abbr.js`), else the shipped program-name logic
+- `tagOf(p.cwd)` follows the name in dim text: the project under `Projects/`, abbreviated to three letters (`herdr-ids` → `hid`)
 - `rename(p, cx)` opens `ids-rename` with `{ pane, current }`: from a double-click on the name, from a pen button on hover (`mods/workspace-chrome/square-pen.svg`), and from `nextCommand()` for the copy whose pane is `focused()?.pane`
+- `menu(p, cx)` opens `ids-menu` (`kind: "popup"`, 236×300, props `{ tab: "pane", target }`) on a right-click anywhere on the header, so the pane menu works there too
 - the pane names come from `shared("ids.paneNames")`; `setShared` re-renders every copy, so a rename shows at once
 
 **`mods/ids-rename/main.js`** (new)

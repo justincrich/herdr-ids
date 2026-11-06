@@ -9,7 +9,8 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 ## What you see
 
 - **Copy IDs** is the first item on the space, tab, and pane right-click menus.
-- **Rename pane** is the second item on a pane's right-click menu; double-clicking a pane's name, or the pen button in its header, does the same.
+- **Rename pane** is the second item on a pane's right-click menu — the menu opens on the terminal area and on the pane's header. Double-clicking a pane's name, or the pen button in its header, does the same.
+- Every pane header reads `Name Fix [hid]`: the pane's name, then the tag of the project it is in.
 - Right-clicking an agent row in the Agents sidebar opens a popup with **Copy IDs**, **Copy terminal address**, and **Copy agent session** (when the agent reports one).
 - Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy relative path**.
 - Each action shows a toast: **IDs copied** for the block, **Copied** for a single value.
@@ -26,10 +27,12 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 ## Pane names
 
 - A pane can be named. The name replaces the program's own title in that pane's header, and **Copy IDs** on the pane prints it: `pane p2948… (tests) · tab tb471…`.
-- Rename from the pane's right-click menu (**Rename pane**), the pen button that appears in the header on hover, or a double-click on the name itself.
+- Rename from the pane's right-click menu (**Rename pane** — on the terminal or on the pane's header), the pen button that appears in the header on hover, or a double-click on the name itself.
 - An empty name gives the pane its program's title back.
+- What the header shows, in order: the name given here; else the name whoever started the terminal gave it (`hc run --name`, which a runner such as a sprint orchestrator sets); else what the agent reports it is doing (its terminal title, once the spinner frame is trimmed); else the program (`Claude Code`, `zsh`). An assigned name always beats a derived one.
+- Every header ends with the project's tag in dim text: `Name Fix [hid]`. The tag comes from the live folder — the segment right after `Projects/` (`~/Projects/herdr-ids/mods/ids-pane` → `herdr-ids`), else the folder's own name — and is three lowercase letters: a one-word name keeps its first three (`brain` → `bra`), a two-word name is the first word's initial plus the second word's first two (`herdr-ids` → `hid`), and a longer name is the initials of its first three words (`my-cool-app` → `mca`). Camel case splits like a separator, so `herdrIds` tags the same as `herdr-ids`. A home folder, a temporary folder, or no folder shows no tag.
 - Names live in `shared("ids.paneNames")`, a `{ paneId: name }` map the app persists in `shared.json`, so they outlive the window and every open window agrees. Panes are keyed by their own id, so a name never follows a different pane.
-- The header is the shipped `pane` (and `terminals-pane`) header with one addition: the name wins over the program name when one is set. Everything else — icon, folder, status, split/zoom/close buttons — is unchanged.
+- The header is the shipped `pane` (and `terminals-pane`) header with three additions: the name and its tag in place of the program name when one is set, a pen button on hover, and a right-click that opens the pane menu. Everything else — icon, folder, status, split/zoom/close buttons — is unchanged.
 - The rename dialog is its own mod (`ids-rename`): a text field, Save, Cancel, Esc. It writes the map with `setShared`, which re-renders every copy, so the header changes as it saves.
 - A keybinding can call `ids-pane:rename` (or `ids-terminals-pane:rename`); the header showing the focused pane opens the dialog.
 
@@ -43,7 +46,8 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `mods/ids-spaces/`, `mods/ids-tabs/`, `mods/ids-terminals-bar/` — the shipped sidebar and tab mods with their menu opens repointed to `ids-menu`.
 - `mods/ids-sidebar/` — the sidebar's tab strip. It replaces Herdr's split left panel: Spaces and Agents are two views of one stack, so only one list fills the height at a time. The strip is the stack's header: each tab carries its own action (New space on Spaces, Sort agents on Agents) and the Agents tab keeps counting agents that need you while Spaces is in front. It narrows to icons, then to a single unfold button, as the sidebar goes to its rail.
 - `mods/ids-workspace-chrome/` — the brand row across the top of the sidebar. Search, the Settings gear, and the sidebar toggle sit together in the top-left; the gear carries an update dot. Add machine moved into Settings → Machines.
-- `mods/ids-pane/` — the `main` layout's pane header (a copy of the shipped `pane` mod) with one addition: `shared("ids.paneNames")`'s entry for that pane wins over the program name, and a double-click on the name, or a pen button on hover, opens the rename dialog. `ids-pane:rename` opens it for the focused pane.
+- `mods/ids-pane/` — the `main` layout's pane header (a copy of the shipped `pane` mod) with the additions above. `ids-pane:rename` opens the dialog for the focused pane.
+- `mods/ids-pane/abbr.js` — `projectOf(cwd)`, `abbr(name)` and `tagOf(cwd)`: the project a folder belongs to and its three-letter tag, plus `cleanTitle`/`tells` for reading an agent's title as a name. `mods/ids-terminals-pane/abbr.js` is the same file (a mod can only import from its own folder).
 - `mods/ids-terminals-pane/` — the same for the `terminals` layout, over the shipped `terminals-pane` header.
 - `mods/ids-rename/` — the rename dialog: a text field (an `InputState`), Save, Cancel, Esc. Save writes the name into the same shared map with `setShared`, which persists it and re-renders every mod; an empty name deletes the entry. It also drops entries for panes that no longer exist.
 - Data comes from `spaces()`, `panes()`, `agents()`, `terminals()` and `focused()` in the `herdr` module; the pane names come from `shared()`/`setShared()`; clipboard and toast come from the view `Context` and `notify()`.
