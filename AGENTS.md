@@ -32,6 +32,7 @@ Each device keeps a checkout at `~/Projects/herdr-ids` and **symlinks** it into 
 3. Bump `VERSION` (mod or layout change only; docs alone don't need it).
 4. Commit and push.
 5. Sync: `./scripts/sync.sh --all` (or name machines).
+6. Verify the local symlink (below). This is always the last step, and the change is not finished until it passes.
 
 Push before syncing. Devices pull from the repo, so anything unpushed does not reach them, and `sync.sh` warns when the tree is dirty.
 
@@ -40,6 +41,21 @@ Push before syncing. Devices pull from the repo, so anything unpushed does not r
 ./scripts/sync.sh holocron        # this device + holocron
 ./scripts/sync.sh --all           # every connected machine that has Herdr
 ```
+
+### The last step: verify the local symlink
+
+Always finish a change by proving the local app home runs *this* checkout, not a stale copy. The app executes the files through symlinks, so a missing or broken link means the edit never reached the app.
+
+```sh
+home=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
+readlink "$home/mods/ids-menu"          # -> .../Projects/herdr-ids/mods/ids-menu
+readlink "$home/layouts/main-ids.json"  # -> .../Projects/herdr-ids/layouts/main-ids.json
+cat "$home/.herdr-ids-source"           # this checkout's path
+cat "$home/.herdr-ids-version"          # matches ./VERSION
+herdr-app status                        # layout=main-ids errors=[]
+```
+
+Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. `readlink` must print a path inside this checkout. If it prints nothing (a copied directory) or points somewhere else, run `./install.sh --link` and check again. Do not report the change done until the links resolve here and `herdr-app status` shows `errors=[]`.
 
 ## The commands
 
