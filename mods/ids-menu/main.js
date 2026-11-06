@@ -5,7 +5,15 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec, notify } from "herdr";
+import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec, notify, shared } from "herdr";
+
+const NAMES = "ids.paneNames";
+
+// The pane names, as { paneId: name }, set by the rename dialog.
+function paneNames() {
+  const v = shared(NAMES);
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
 
 // Where a space is now: its first terminal's live folder, else where it was made.
 function place(s) {
@@ -43,7 +51,8 @@ function idsText(p) {
   if (p?.tab === "pane") {
     const pane = pn.find((x) => x.pane === tg.pane);
     const space = pane && tabSpace.get(pane.tab);
-    push(`pane ${tg.pane} · tab ${pane?.tab ?? "?"}${spacePart(space)}`);
+    const own = paneNames()[tg.pane];
+    push(`pane ${tg.pane}${own ? ` (${own})` : ""} · tab ${pane?.tab ?? "?"}${spacePart(space)}`);
     if (tg.terminal) termLines(tg.terminal);
   } else if (p?.tab === "tab") {
     const space = tabSpace.get(tg.id);
@@ -77,6 +86,7 @@ function items(p, git) {
       const inTab = panes().some((pane) => pane.pane === tg.pane);
       return [
         ["Copy IDs", "copy.ids", {}],
+        ["Rename pane", "pane.rename", {}],
         ...(inTab
           ? [
               ["Split right", "pane.split", { direction: "right", pane: tg.pane }],
@@ -174,6 +184,15 @@ export default class Menu extends View {
     if (it[1] === "clipboard.copy") {
       cx.write_to_clipboard(it[2].text);
       return notify({ title: "Copied", body: it[0], level: "success" });
+    }
+    if (it[1] === "pane.rename") {
+      const tg = props()?.target ?? {};
+      return openOverlay({
+        mod: "ids-rename",
+        kind: "dialog",
+        width: 380,
+        props: { pane: tg.pane, current: paneNames()[tg.pane] ?? "" },
+      });
     }
     if (it[1] === "worktree") openOverlay({ mod: "worktree", kind: "dialog", ...(it[2].action === "open" ? { width: 560, height: 480 } : { width: 440, height: 260 }), props: it[2] });
     else run(it[1], it[2]);

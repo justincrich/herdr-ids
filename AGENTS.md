@@ -77,6 +77,9 @@ Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. 
 | `mods/ids-agents/main.js` | Agents sidebar; right-click opens `ids-menu` with `tab: "agent"` |
 | `mods/ids-files/main.js` | Files panel; right-click opens `ids-menu` with `tab: "files"` |
 | `mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar` | shipped panels whose menu open points at `ids-menu` |
+| `mods/ids-pane/main.js` | `main`'s pane header: shipped `pane` header + the pane's own name |
+| `mods/ids-terminals-pane/main.js` | the same over the shipped `terminals-pane` header |
+| `mods/ids-rename/main.js` | the rename dialog that writes a pane's name |
 | `layouts/main-ids.json` | `main` layout with `terminal_menu: "ids-menu"` and `ids-*` blocks |
 | `layouts/terminals-ids.json` | the same for the `terminals` layout |
 | `RECIPE.md` | the brief another agent rebuilds from; keep it true when behavior changes |
@@ -90,6 +93,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - import `notify` from `herdr`
 - the `idsText(p)` helper (builds the block from `terminals()`, `panes()`, `spaces()`)
 - `["Copy IDs", "copy.ids", {}]` first in the `pane`, `tab`, and `space` cases
+- `["Rename pane", "pane.rename", {}]` second in the `pane` case; `choose()` handles it by opening `ids-rename` with `{ pane, current }`
 - `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, relative path)
 - `choose()` handles `copy.ids` and `clipboard.copy` with `cx.write_to_clipboard(...)` plus a toast
 
@@ -118,14 +122,26 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - no internal title header: the tab strip above is the only header for the stack
 - `ids-spaces` keeps only its machine rows and the New space there action
 
+**`mods/ids-pane/main.js`, `mods/ids-terminals-pane/main.js`** (new)
+- a copy of the shipped `pane` / `terminals-pane` header, rendered unchanged except the name
+- `const own = paneNames()[p.pane]` wins over the program name / terminal title
+- `rename(p, cx)` opens `ids-rename` with `{ pane, current }`: from a double-click on the name, from a pen button on hover (`mods/workspace-chrome/square-pen.svg`), and from `nextCommand()` for the copy whose pane is `focused()?.pane`
+- the pane names come from `shared("ids.paneNames")`; `setShared` re-renders every copy, so a rename shows at once
+
+**`mods/ids-rename/main.js`** (new)
+- a dialog modeled on the shipped `prompt` mod: `InputState.new`, `.on("change")`, `.on("submit")`, `.focus()`, Esc cancels
+- Save writes `shared("ids.paneNames")` with `setShared`: an empty name deletes the entry, and entries for panes that no longer exist are dropped
+- mod commands carry no arguments, so the pane id travels in the overlay's `props`, not in `run(...)`
+
 **Layouts**
 - root `terminal_menu: "ids-menu"`
 - blocks reference `ids-spaces`, `ids-agents`, `ids-tabs`, `ids-files` (and `ids-terminals-bar` in `terminals-ids.json`)
+- the pane header is `ids-pane` in `main-ids.json` and `ids-terminals-pane` in `terminals-ids.json`
 - the sidebar's `sidebar-lists` is a `stack` with a `header` mod `ids-sidebar`; children are `agents` then `spaces`, `active` picks the default view
 
 ## Rebase on a new Herdr release
 
-1. Copy the current `defaults/mods/*/main.js` (and any assets) from the app repo over the matching files here.
+1. Copy the current `defaults/mods/*/main.js` (and any assets) from the app repo over the matching files here — for the pane headers, over `mods/ids-pane` and `mods/ids-terminals-pane`.
 2. Re-apply the hooks above.
 3. `herdr-app check` each mod.
 4. Bump `VERSION`, commit, push, `./scripts/sync.sh --all`.

@@ -115,7 +115,7 @@
                   },
                   "header": {
                     "content": {
-                      "mod": "pane"
+                      "mod": "ids-pane"
                     },
                     "height": 30,
                     "position": "top",

@@ -60,6 +60,8 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 | `mods/ids-spaces`, `mods/ids-tabs`, `mods/ids-terminals-bar` | shipped panels repointed at `ids-menu` |
 | `mods/ids-sidebar` | the Spaces/Agents tab strip: both lists in one sidebar panel, switched by tabs |
 | `mods/ids-workspace-chrome` | the brand row: Search, Settings gear, and the sidebar toggle, all in the top-left |
+| `mods/ids-pane`, `mods/ids-terminals-pane` | pane headers that show the name you gave a pane |
+| `mods/ids-rename` | the rename dialog a pane name is typed into |
 | `layouts/main-ids.json` | `main` layout wired to the `ids-*` mods |
 | `layouts/terminals-ids.json` | `terminals` layout wired the same way |
 | `bootstrap.sh` | clone or pull this repo, link it, switch the layout |
