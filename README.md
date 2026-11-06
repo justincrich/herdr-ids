@@ -2,6 +2,8 @@
 
 Copyable IDs for Herdr: right-click a space, tab, pane, agent, or file and copy a block another session can use to find and read it.
 
+Published at **https://github.com/justincrich/herdr-ids** (topic `herdr-layout`).
+
 ```
 space sp7488… (holden)
   tab tb4c1f…
@@ -56,15 +58,28 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 | `RECIPE.md` | the brief another agent can rebuild from |
 | `preview.png` | screenshot |
 
-## Publish it
-
-A layout package is a public GitHub repo with the layout, its mods, `RECIPE.md`, `preview.png`, and the topic `herdr-layout`; mod-only packages use `herdr-mod`. It appears on herdr.dev/layouts (or /mods) within the hour.
+## Adding a machine
 
 ```sh
-git init && git add -A && git commit -m "copyable herdr ids"
-gh repo create <owner>/herdr-ids --public --source=. --push
-gh repo edit <owner>/herdr-ids --add-topic herdr-layout
+git clone https://github.com/justincrich/herdr-ids
+cd herdr-ids && ./install.sh
+herdr-app do layout.switch --name main-ids
 ```
+
+Or from an already-synced machine: `./scripts/sync.sh <machine>` carries the files over `hc`, so the target needs no clone.
+
+## Day 2
+
+1. Change a mod.
+2. Bump `VERSION`.
+3. `./scripts/sync.sh --all`
+4. `git commit -am "…" && git push`
+
+Everything else follows from the repo being the single source.
+
+## Publishing notes
+
+This is a layout package: `layouts/`, its `mods/`, `RECIPE.md`, `preview.png`, topic `herdr-layout`. A mod-only package uses `herdr-mod` instead. Either appears on herdr.dev within the hour.
 
 ## Notes
 
