@@ -28,6 +28,13 @@ function toggleSidebar() {
 
 const clean = (s) => (s ?? "").replace(/^[^\p{L}\p{N}]+/u, "").trim();
 
+// The names people gave panes (see ids-pane), so an agent reads by the name on
+// its pane rather than the tab's or the terminal's own title.
+const paneNames = () => {
+  const v = shared("ids.paneNames");
+  return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+};
+
 function leadPanes(all) {
   const leads = new Map();
   for (const p of all) {
@@ -302,13 +309,21 @@ export default class Agents extends View {
         .when(!open, (el) => el.child(String(subs.length)));
     };
 
-    // A row reads "space \u00b7 detail": the detail is a tab someone named or the
-    // agent's own title, never an automatic tab number unless two rows would
-    // otherwise read the same.
+    // A row reads "space \u00b7 detail": the detail is the name someone gave the
+    // pane, a tab someone named, or the agent's own title, never an automatic
+    // tab number unless two rows would otherwise read the same.
     // Read the pane snapshot once: every host read copies the whole list into JS.
     const leads = leadPanes(panes());
     const tabLabels = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, title(tab, leads.get(tab.id))]));
-    const labels = new Map(list.map(a => [a.address, tabLabels.get(a.tab) ?? (a.title || a.program?.name || "")]));
+    // A name given to the pane wins over what the tab or the terminal calls it;
+    // then the name whoever started the terminal gave it (`hc run --name`), then
+    // the tab's, then the agent's own title. An automatic tab number says nothing.
+    const own = paneNames();
+    const termNames = new Map(terminals().map((x) => [x.address, String(x?.name ?? "").trim()]));
+    const labels = new Map(list.map((a) => [
+      a.address,
+      own[a.pane] ?? termNames.get(a.address) ?? tabLabels.get(a.tab) ?? (a.title || a.program?.name || ""),
+    ]));
     const label = (a) => labels.get(a.address);
     const detail = new Map(list.map(a => [a.address, /^\d+$/.test(label(a)) ? null : label(a)]));
     const seen = {};
