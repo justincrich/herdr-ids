@@ -17,7 +17,7 @@ except Exception:
 }
 
 install_here() {
-  HERDR_IDS_DIR="$here" "$here/bootstrap.sh" >/dev/null
+  "$here/install.sh" --link >/dev/null
   printf '%-12s %-7s ' local "$(cat "$here/VERSION")"
   herdr-app status 2>/dev/null | status_line
 }
@@ -33,7 +33,7 @@ install_remote() {
     return 0
   fi
   hc exec --on "$m" sh -c "curl -fsSL $raw | sh" >/dev/null
-  printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/.local/share/herdr-ids/VERSION')"
+  printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/Projects/herdr-ids/VERSION')"
   hc exec --on "$m" herdr-app status 2>/dev/null | status_line
 }
 
