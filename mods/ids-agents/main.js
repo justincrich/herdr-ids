@@ -4,6 +4,7 @@
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, notify } from "herdr";
+import { tagOf, cleanTitle, tells } from "./abbr.js";
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -235,7 +236,7 @@ export default class Agents extends View {
         .when(Boolean(l), el => el.border_l(1.5).border_color(t.input))
         .when(l === "└" || l === "├", el => el.border_b(1.5).rounded_bl(6))))
       .when(Boolean(pic), el => el.child(div().mr(8).child(pic)))
-      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(k.name || k.template || k.program?.name || k.address))
+      .child(div().flex_1().truncate().text_color(on ? t.foreground : t.muted).child(this.nameOf(k)))
       .child(this.status(t, { status: st }, compact));
   }
 
@@ -315,16 +316,30 @@ export default class Agents extends View {
     // Read the pane snapshot once: every host read copies the whole list into JS.
     const leads = leadPanes(panes());
     const tabLabels = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, title(tab, leads.get(tab.id))]));
-    // A name given to the pane wins over what the tab or the terminal calls it;
-    // then the name whoever started the terminal gave it (`hc run --name`), then
-    // the tab's, then the agent's own title. An automatic tab number says nothing.
+    // A row's name, in order: the name whoever started the terminal gave it
+    // (`hc run --name`, which a runner sets), then the name someone gave the
+    // pane, tagged with its project ("Fix bug [hid]"), then the pane's own
+    // title, then the tab's name. The pane's title comes before the tab's: two
+    // panes in one tab would otherwise share the tab's name and read alike.
+    // A blank name must fall through, not stop the chain: `String(null ?? "")`
+    // is "", and "" is not nullish.
     const own = paneNames();
-    const termNames = new Map(terminals().map((x) => [x.address, String(x?.name ?? "").trim()]));
-    const labels = new Map(list.map((a) => [
-      a.address,
-      own[a.pane] ?? termNames.get(a.address) ?? tabLabels.get(a.tab) ?? (a.title || a.program?.name || ""),
-    ]));
-    const label = (a) => labels.get(a.address);
+    const termNames = new Map(terminals().map((x) => {
+      const n = String(x?.name ?? "").trim();
+      return [x.address, n || null];
+    }));
+    const folderOf = new Map(panes().map((p) => [p.pane, p.cwd]));
+    // One name chain for a pane's row and a sub-agent's row alike.
+    const nameOf = (t) => {
+      const given = termNames.get(t.address);
+      const pane = own[t.pane];
+      const tag = tagOf(folderOf.get(t.pane));
+      const named = pane ? (tag ? `${pane} ${tag}` : pane) : null;
+      const ownTitle = tells(t.title, t.program) ? cleanTitle(t.title) : null;
+      return given ?? named ?? ownTitle ?? tabLabels.get(t.tab) ?? (t.program?.name || t.address || "");
+    };
+    this.nameOf = nameOf;
+    const label = (a) => nameOf(a);
     const detail = new Map(list.map(a => [a.address, /^\d+$/.test(label(a)) ? null : label(a)]));
     const seen = {};
     for (const a of list) { const k = `${a.space_name}\u0000${detail.get(a.address) ?? ""}`; seen[k] = (seen[k] ?? 0) + 1; }
