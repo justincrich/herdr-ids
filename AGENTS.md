@@ -8,6 +8,12 @@ A Herdr **layout** package: six **mods** and two **layouts**. Herdr calls them t
 
 Published at <https://github.com/justincrich/herdr-ids>, topic `herdr-layout`.
 
+## Where the app's own code lives
+
+The app this package plugs into is a separate checkout at **`../herdr-app`** (`~/Projects/herdr-app`, a Rust/GPUI repo with `defaults/mods/` and `src/`). Its runtime and control plane are at `../herdr` (`~/Projects/herdr`).
+
+So when a request is about how Herdr itself behaves — panes, tabs, spaces, dragging, focus, key handling, the mod API, any new `herdr` import — **the base code for that work is `../herdr-app` (or `../herdr`), not this repo.** This repo only ships `mods/ids-*` and `layouts/*-ids.json`; it cannot change app behavior, only replace shipped panels and menus. If a request lands here that needs app-core work, say so and point at `../herdr-app` instead of stretching a mod to fake it.
+
 ## How it reaches the app
 
 Each device keeps a checkout at `~/Projects/herdr-ids` and **symlinks** it into the Herdr app home. The app runs these files directly; nothing is copied.
