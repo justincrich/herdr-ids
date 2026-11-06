@@ -10,30 +10,37 @@ space sp7488… (holden)
     hc read t9 --lines 200
 ```
 
-## Install
+## Install one machine
 
 ```sh
 ./install.sh                                   # this machine
 HERDR_APP_HOME=/path/to/home ./install.sh      # another app home
-```
-
-Then apply the layout:
-
-```sh
 herdr-app do layout.switch --name main-ids
-# or, for the Terminals layout:
-herdr-app do layout.switch --name terminals-ids
 ```
 
 Revert any time with `herdr-app do layout.switch --name main`.
 
-### Another machine
+## Standardize across devices
+
+`scripts/sync.sh` installs this exact build into this machine and any named `hc` machine, switches their layout, and prints the version, layout and mod errors for each:
 
 ```sh
-tar czf - mods layouts | hc exec -i --on <machine> sh -c 'cd ~/.config/herdr-app && tar xzf -'
-hc exec --on <machine> herdr-app do layout.switch --name main-ids
-hc exec --on <machine> herdr-app check ~/.config/herdr-app/mods/ids-menu
+./scripts/sync.sh                 # this machine
+./scripts/sync.sh holocron        # this machine + holocron
+./scripts/sync.sh --all           # every connected machine that has Herdr
 ```
+
+Output is one line per machine:
+
+```
+herdr-ids 1.0.0
+local        1.0.0   layout=main-ids errors=[]
+holocron     1.0.0   layout=main-ids errors=[]
+```
+
+`VERSION` is the build's version; `install.sh` writes it to `<app home>/.herdr-ids-version` so each machine can say what it runs. Machines without Herdr are reported and skipped.
+
+Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whole standardization loop: one repo, one command, every machine on the same build.
 
 ## What is in here
 
@@ -45,6 +52,7 @@ hc exec --on <machine> herdr-app check ~/.config/herdr-app/mods/ids-menu
 | `mods/ids-spaces`, `mods/ids-tabs`, `mods/ids-terminals-bar` | shipped panels repointed at `ids-menu` |
 | `layouts/main-ids.json` | `main` layout wired to the `ids-*` mods |
 | `layouts/terminals-ids.json` | `terminals` layout wired the same way |
+| `scripts/sync.sh` | install here + named machines, then verify |
 | `RECIPE.md` | the brief another agent can rebuild from |
 | `preview.png` | screenshot |
 
@@ -61,5 +69,5 @@ gh repo edit <owner>/herdr-ids --add-topic herdr-layout
 ## Notes
 
 - `ids-menu` replaces the terminal right-click menu; it does not merge with Herdr's items.
-- These are personal copies of shipped mods. Re-copy `defaults/mods/*/main.js` when Herdr ships menu changes.
+- These are personal copies of shipped mods. Re-copy `defaults/mods/*/main.js` when Herdr ships menu changes; `RECIPE.md` lists the lines to re-apply.
 - `herdr-app check <mod>` validates each mod; `herdr-app status` shows mod errors.
