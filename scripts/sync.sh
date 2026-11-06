@@ -5,7 +5,6 @@
 #   ./scripts/sync.sh --all           # every connected machine that has Herdr
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
-raw=https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh
 
 status_line() {
   python3 -c 'import json,sys
@@ -32,7 +31,13 @@ install_remote() {
     printf '%-12s %-7s skipped (no Herdr)\n' "$m" "-"
     return 0
   fi
-  hc exec --on "$m" sh -c "curl -fsSL $raw | sh" >/dev/null
+  hc exec --on "$m" sh -c '
+    dir=$HOME/Projects/herdr-ids
+    repo=https://github.com/justincrich/herdr-ids
+    if [ -d "$dir/.git" ]; then git -C "$dir" pull --ff-only; else mkdir -p "$(dirname "$dir")" && git clone --depth 1 "$repo" "$dir"; fi
+    "$dir/install.sh" --link
+    herdr-app do layout.switch --name main-ids >/dev/null 2>&1 || true
+  ' >/dev/null
   printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/Projects/herdr-ids/VERSION')"
   hc exec --on "$m" herdr-app status 2>/dev/null | status_line
 }
