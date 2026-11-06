@@ -24,7 +24,7 @@ Revert any time with `herdr-app do layout.switch --name main`.
 
 ## Standardize across devices
 
-Each device keeps its own checkout of this repo at `~/.local/share/herdr-ids` and **pulls** it. `bootstrap.sh` clones on the first run, pulls on later runs, installs, and switches the layout:
+Each device keeps its own checkout at `~/Projects/herdr-ids` and **symlinks** it into the Herdr app home, so the app runs the repo's files directly. `bootstrap.sh` clones on the first run, pulls on later runs, links, and switches the layout:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
@@ -60,7 +60,8 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 | `mods/ids-spaces`, `mods/ids-tabs`, `mods/ids-terminals-bar` | shipped panels repointed at `ids-menu` |
 | `layouts/main-ids.json` | `main` layout wired to the `ids-*` mods |
 | `layouts/terminals-ids.json` | `terminals` layout wired the same way |
-| `scripts/sync.sh` | install here + named machines, then verify |
+| `bootstrap.sh` | clone or pull this repo, link it, switch the layout |
+| `scripts/sync.sh` | pull + link here and on named machines, then verify |
 | `RECIPE.md` | the brief another agent can rebuild from |
 | `preview.png` | screenshot |
 
@@ -70,7 +71,7 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
 ```
 
-That clones into `~/.local/share/herdr-ids`, installs, and switches the layout. From a synced machine, `./scripts/sync.sh <machine>` runs the same bootstrap there, so the target clones itself.
+That clones into `~/Projects/herdr-ids`, symlinks it, and switches the layout. From a synced machine, `./scripts/sync.sh <machine>` runs the same bootstrap there, so the target clones itself.
 
 ## Day 2
 
