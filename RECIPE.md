@@ -30,6 +30,8 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `mods/ids-agents/` — the Agents sidebar, with a right-click that opens `ids-menu` with `tab: "agent"`.
 - `mods/ids-files/` — the Files panel, with a right-click that opens `ids-menu` with `tab: "files"`.
 - `mods/ids-spaces/`, `mods/ids-tabs/`, `mods/ids-terminals-bar/` — the shipped sidebar and tab mods with their menu opens repointed to `ids-menu`.
+- `mods/ids-sidebar/` — the sidebar's tab strip. It replaces Herdr's split left panel: Spaces and Agents are two views of one stack, so only one list fills the height at a time. The strip is the stack's header: each tab carries its own action (New space on Spaces, Sort agents on Agents) and the Agents tab keeps counting agents that need you while Spaces is in front. It narrows to icons, then to a single unfold button, as the sidebar goes to its rail.
+- `mods/ids-workspace-chrome/` — the brand row across the top of the sidebar. Search, the Settings gear, and the sidebar toggle sit together in the top-left; the gear carries an update dot. Add machine moved into Settings → Machines.
 - Data comes from `spaces()`, `panes()`, `agents()`, `terminals()` and `focused()` in the `herdr` module; clipboard and toast come from the view `Context` and `notify()`.
 
 ## Watch out

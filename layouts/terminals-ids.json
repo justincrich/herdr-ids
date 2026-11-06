@@ -37,7 +37,8 @@
       "window_drag": true,
       "content": {
         "mod": "ids-terminals-bar"
-      }
+      },
+      "drop_pane": true
     },
     {
       "id": "main",

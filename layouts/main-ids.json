@@ -35,49 +35,40 @@
           },
           "window_drag": true,
           "content": {
-            "mod": "workspace-chrome"
+            "mod": "ids-workspace-chrome"
           }
         },
         {
           "id": "sidebar-lists",
-          "type": "column",
+          "type": "stack",
+          "active": "spaces",
+          "header": {
+            "content": {
+              "mod": "ids-sidebar",
+              "props": {
+                "stack": "sidebar-lists"
+              }
+            },
+            "height": 34
+          },
           "children": [
             {
               "id": "spaces",
+              "title": "Spaces",
               "type": "block",
-              "size": {
-                "weight": 1
-              },
-              "min": 90,
               "content": {
                 "mod": "ids-spaces"
               }
             },
             {
               "id": "agents",
+              "title": "Agents",
               "type": "block",
-              "size": {
-                "weight": 1
-              },
-              "min": 90,
               "content": {
                 "mod": "ids-agents"
               }
             }
           ]
-        },
-        {
-          "id": "sidebar-footer",
-          "type": "block",
-          "size": {
-            "px": 69
-          },
-          "content": {
-            "mod": "workspace-chrome",
-            "props": {
-              "footer": true
-            }
-          }
         }
       ]
     },
@@ -95,7 +86,8 @@
           "window_drag": true,
           "content": {
             "mod": "ids-tabs"
-          }
+          },
+          "drop_pane": true
         },
         {
           "id": "work-body",
