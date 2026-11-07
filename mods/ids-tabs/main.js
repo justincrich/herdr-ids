@@ -98,12 +98,14 @@ export default class Tabs extends View {
     const space = spaces().find(p => p.active);
     const shown = space?.tabs ?? [];
     const stop = (_e, cx) => cx.stop_propagation();
-    // A disabled button still swallows its press, but carries no hover and no click, and reads
-    // faint: an arrow with nowhere to go must be inert, not merely grey.
-    const button = (id, label, action, enabled = true) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(t.dim)
+    const button = (id, label, action) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
+      .on_mouse_down("left", stop).on_click(action).child(label);
+    // History reads brighter than the row's other buttons because it is the one pair that is
+    // often unavailable: muted when it can move, dim when it can't, and a dim one takes no
+    // click. Fading it with opacity would put it under the contrast of the row's own hairline.
+    const arrow = (id, icon, action, enabled) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(enabled ? t.muted : t.dim)
       .when(enabled, el => el.hover(s => s.bg(t.hover).text_color(t.foreground)).on_click(action))
-      .when(!enabled, el => el.opacity(0.35))
-      .on_mouse_down("left", stop).child(label);
+      .on_mouse_down("left", stop).child(svg(icon).size(14));
     const item = (c, i) => {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const name = /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
@@ -149,9 +151,11 @@ export default class Tabs extends View {
       .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().children(shown.map(item)))
       // The arrows walk the panes that have taken focus, the way a browser walks pages, from
-      // the end of the tabs: the spot the eye is on after moving between them.
-      .child(button("back", svg("mods/workspace-chrome/chevron-left.svg").size(15), () => this.step(-1), back).tooltip("Back"))
-      .child(button("forward", svg("mods/workspace-chrome/chevron-right.svg").size(15), () => this.step(1), forward).tooltip("Forward"))
+      // the end of the tabs: the one shelf in the window that never moves. Two pixels apart so
+      // they read as one stepper, with 8px of air (5 here + the row's 3) before the new tab.
+      .child(h_flex().id("history").flex_none().items_center().gap(2).pr(5)
+        .child(arrow("back", "ids-icons/arrow-left.svg", () => this.step(-1), back).tooltip("Back"))
+        .child(arrow("forward", "ids-icons/arrow-right.svg", () => this.step(1), forward).tooltip("Forward")))
       .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
