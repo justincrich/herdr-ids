@@ -116,6 +116,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 **`mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar`**
 - `mod: "menu"` becomes `mod: "ids-menu"`
+- `ids-tabs` draws Back and Forward after the tab strip, before `+`: they step `pane.focus` through the panes that recently took focus. The history is the view's own `trail` (pane ids, oldest first) with `at` as the cursor, recorded from `focused()?.pane` each render and pruned against `panes()`; an arrow with nowhere to go is drawn faint and carries no `on_click`, so a closed pane never reaches the command
 
 **`mods/ids-sidebar/main.js`** (new)
 - the stack header that draws one tab per sidebar view; clicking calls `layout.select {stack, child}`
@@ -124,7 +125,6 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 **`mods/ids-workspace-chrome/main.js`** (new)
 - the brand row: Search, the Settings gear (with an update dot), and the panel-left sidebar toggle
-- Back and Forward sit after Search and step `pane.focus` through the panes that recently took focus; the history is the view's own `trail` (pane ids, oldest first) and `at` (the cursor), recorded from `focused()?.pane` every render and pruned against `panes()`, and a dim arrow carries no `on_click` so a closed pane never reaches the command
 - the shipped footer (Settings + Add machine) is gone; adding a machine lives in Settings → Machines
 
 **`mods/ids-spaces`, `mods/ids-agents`**

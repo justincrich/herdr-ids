@@ -1,6 +1,9 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, shared, layout, settings, focused } from "herdr";
+
+// How many panes the arrows remember.
+const TRAIL = 20;
 
 function find(node, id) {
   if (node?.id === id) return node;
@@ -15,6 +18,47 @@ export default class Tabs extends View {
   init() {
     this.pressed = null;
     this.panels = JSON.parse(localStorage.getItem("panels") ?? "{}");
+    this.trail = [];
+    this.at = -1;
+  }
+
+  // The panes that took focus, oldest first, and where the person stands in that list; the
+  // arrows at the end of the tabs walk it. Not shared(): setShared re-renders every mod.
+  // A closed pane must never reach pane.focus, which toasts "no such pane"; dropping it here
+  // also makes a dimmed arrow truthful in the frame the pane goes.
+  prune() {
+    const live = new Set(panes().map(p => p.pane));
+    const kept = [];
+    let at = -1;
+    for (let i = 0; i < this.trail.length; i++) {
+      if (!live.has(this.trail[i])) continue;
+      kept.push(this.trail[i]);
+      if (i <= this.at) at = kept.length - 1;
+    }
+    this.trail = kept;
+    this.at = at;
+  }
+  // Focus moved somewhere the cursor doesn't point at, so it becomes the end of the trail and
+  // anything ahead of it is gone. A focused layout block has no pane to remember: leaving it
+  // alone is what keeps it from blocking a step.
+  record() {
+    const pane = focused()?.pane ?? null;
+    if (!pane || pane === this.trail[this.at]) return;
+    this.trail = this.trail.slice(0, this.at + 1).concat(pane);
+    if (this.trail.length > TRAIL) this.trail.shift();
+    this.at = this.trail.length - 1;
+  }
+  // The redraw after a step records nothing, because the cursor already points at the pane
+  // that just took focus. A pane can close between two frames, so step over a dead entry.
+  step(direction) {
+    this.prune();
+    const live = new Set(panes().map(p => p.pane));
+    for (let i = this.at + direction; i >= 0 && i < this.trail.length; i += direction) {
+      if (!live.has(this.trail[i])) continue;
+      this.at = i;
+      run("pane.focus", { pane: this.trail[i] });
+      return;
+    }
   }
 
   // The side panel is remembered per space: switching shows that space's choice
@@ -47,11 +91,19 @@ export default class Tabs extends View {
 
   render() {
     const t = theme();
+    this.prune();
+    this.record();
+    const back = this.at > 0;
+    const forward = this.at < this.trail.length - 1;
     const space = spaces().find(p => p.active);
     const shown = space?.tabs ?? [];
     const stop = (_e, cx) => cx.stop_propagation();
-    const button = (id, label, action) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(t.dim).hover(s => s.bg(t.hover).text_color(t.foreground))
-      .on_mouse_down("left", stop).on_click(action).child(label);
+    // A disabled button still swallows its press, but carries no hover and no click, and reads
+    // faint: an arrow with nowhere to go must be inert, not merely grey.
+    const button = (id, label, action, enabled = true) => div().id(id).size(26).flex_none().flex().items_center().justify_center().rounded(6).text_color(t.dim)
+      .when(enabled, el => el.hover(s => s.bg(t.hover).text_color(t.foreground)).on_click(action))
+      .when(!enabled, el => el.opacity(0.35))
+      .on_mouse_down("left", stop).child(label);
     const item = (c, i) => {
       const program = panes().find(p => p.tab === c.id && p.program?.agent)?.program ?? panes().find(p => p.tab === c.id)?.program;
       const name = /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
@@ -96,6 +148,10 @@ export default class Tabs extends View {
       .on_mouse_up("left", () => { this.pressed = null; })
       .on_scroll_wheel(e => { if (Math.abs(e.delta.y) >= 1) run(e.delta.y > 0 ? "tab.prev" : "tab.next"); })
       .child(h_flex().id("tab-scroll").flex_1().min_w(0).h_full().items_center().gap(3).overflow_x_scrollbar().children(shown.map(item)))
+      // The arrows walk the panes that have taken focus, the way a browser walks pages, from
+      // the end of the tabs: the spot the eye is on after moving between them.
+      .child(button("back", svg("mods/workspace-chrome/chevron-left.svg").size(15), () => this.step(-1), back).tooltip("Back"))
+      .child(button("forward", svg("mods/workspace-chrome/chevron-right.svg").size(15), () => this.step(1), forward).tooltip("Forward"))
       .child(button("tab-new", "+", () => openOverlay({ mod: "new-menu", kind: "popup", width: 250, height: 512 })))
       .when(enabled.includes("files"), el => el.child(panelButton("files", "Files", "mods/files/file.svg")))
       .when(enabled.includes("changes"), el => el.child(panelButton("changes", "Changes", "mods/changes/changes.svg")))
