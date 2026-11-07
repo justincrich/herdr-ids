@@ -124,6 +124,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 **`mods/ids-workspace-chrome/main.js`** (new)
 - the brand row: Search, the Settings gear (with an update dot), and the panel-left sidebar toggle
+- Back and Forward sit after Search and step `pane.focus` through the panes that recently took focus; the history is the view's own `trail` (pane ids, oldest first) and `at` (the cursor), recorded from `focused()?.pane` every render and pruned against `panes()`, and a dim arrow carries no `on_click` so a closed pane never reaches the command
 - the shipped footer (Settings + Add machine) is gone; adding a machine lives in Settings → Machines
 
 **`mods/ids-spaces`, `mods/ids-agents`**
