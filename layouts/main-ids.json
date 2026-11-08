@@ -156,6 +156,18 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "chief",
+              "type": "block",
+              "size": {
+                "px": 300
+              },
+              "min": 220,
+              "max": 480,
+              "content": {
+                "mod": "chief-of-staff"
+              }
             }
           ]
         },
