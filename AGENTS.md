@@ -47,6 +47,7 @@ Push before syncing. Devices pull from the repo, so anything unpushed does not r
 Always finish a change by proving the local app home runs *this* checkout, not a stale copy. The app executes the files through symlinks, so a missing or broken link means the edit never reached the app.
 
 ```sh
+./scripts/check-home.sh                 # exit 0: the live home is this checkout
 home=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
 readlink "$home/mods/ids-menu"          # -> .../Projects/herdr-ids/mods/ids-menu
 readlink "$home/layouts/main-ids.json"  # -> .../Projects/herdr-ids/layouts/main-ids.json
@@ -55,6 +56,21 @@ cat "$home/.herdr-ids-version"          # matches ./VERSION
 ls "$home/ids-icons" | head             # the glyph copies, not links into the checkout
 herdr-app status                        # layout=main-ids errors=[]
 ```
+
+### The live home belongs to main, never to a worktree
+
+`install.sh` refuses to install a **linked worktree** into the live app home (`exit 3`), because the running Herdr would then render that branch's mods and layouts, and a layout reload drops the nodes the branch has not got. On 2026-11-08 exactly that took the agents/spaces sidebar out of every window. Test in a scratch home instead, and install main from the main checkout:
+
+```sh
+HERDR_APP_HOME=/tmp/herdr-test ./install.sh      # a worktree tests here
+cd ~/Projects/herdr-ids && ./install.sh          # main owns the live home
+./install.sh --force                             # deliberate exception only
+```
+
+Two more rules that keep the person's window intact:
+
+- **Never drive the live app's layout** from a worktree session. `layout.switch`, `layout.set`, `layout.reset`, `layout.hide` and `layout.show` change the window the person is looking at; point them at a scratch `HERDR_APP_HOME` and a scratch `HC_SESSION`.
+- **A reload can drop nodes.** When a layout file lost one, restore it by id: `herdr-app do layout.show --id sidebar` (`layout.show` returns `ok: true` for an id the layout still has).
 
 Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. `readlink` must print a path inside this checkout. If it prints nothing (a copied directory) or points somewhere else, run `./install.sh --link` and check again. Do not report the change done until the links resolve here and `herdr-app status` shows `errors=[]`.
 
@@ -68,6 +84,7 @@ Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. 
 | `./install.sh --copy` | copy instead of link |
 | `./bootstrap.sh` | clone or pull, link, switch layout |
 | `./scripts/sync.sh [machines…]` | pull + link here and on machines, print version/layout/errors |
+| `./scripts/check-home.sh` | prove the live app home runs this main checkout (exit 1 names the repair) |
 | `herdr-app check mods/<name>` | load and render one mod once; the pass/fail gate |
 | `herdr-app status` | the running window: layout, overlays, mod errors |
 | `herdr-app do layout.switch --name main-ids` | apply the layout |
