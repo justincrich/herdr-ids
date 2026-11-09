@@ -738,7 +738,7 @@ def rpc(target, request, timeout=50):
     )
     argv = ["python3", "-c", loader]
     if target.get("machine"):
-        argv = [
+        transport = [
             "hc",
             "exec",
             "--on",
@@ -747,8 +747,63 @@ def rpc(target, request, timeout=50):
             str(timeout),
             "-i",
             "--",
-            *argv,
         ]
+        # hc exec accepts at most 8 MiB of stdin. Full Git histories can exceed
+        # that limit, so stage bounded chunks and verify the assembled bytes.
+        if len(payload) > 4 * 1024 * 1024:
+            transfer = digest(payload)
+            state_path = str(target.get("state") or "")
+            receiver = """import hashlib,os,pathlib,re,sys,tempfile
+state=pathlib.Path(sys.argv[1]) if sys.argv[1] else pathlib.Path.home()/'.local/state/herdr-deploy'
+key,index,expected=sys.argv[2:5]
+assert re.fullmatch('[0-9a-f]{64}',key) and index.isdecimal()
+data=sys.stdin.buffer.read()
+assert len(data)<=2*1024*1024 and hashlib.sha256(data).hexdigest()==expected
+folder=state/'transfers'/key;folder.mkdir(parents=True,exist_ok=True)
+fd,name=tempfile.mkstemp(dir=folder)
+with os.fdopen(fd,'wb') as f:f.write(data);f.flush();os.fsync(f.fileno())
+os.replace(name,folder/index)
+"""
+            chunks = [
+                payload[i : i + 2 * 1024 * 1024]
+                for i in range(0, len(payload), 2 * 1024 * 1024)
+            ]
+            for index, chunk in enumerate(chunks):
+                run(
+                    [
+                        *transport,
+                        "python3",
+                        "-c",
+                        receiver,
+                        state_path,
+                        transfer,
+                        str(index),
+                        digest(chunk),
+                    ],
+                    data=chunk,
+                    timeout=timeout + 3,
+                )
+            loader = """import hashlib,json,pathlib,shutil,sys
+state=pathlib.Path(sys.argv[1]) if sys.argv[1] else pathlib.Path.home()/'.local/state/herdr-deploy'
+folder=state/'transfers'/sys.argv[2]
+data=b''.join((folder/str(i)).read_bytes() for i in range(int(sys.argv[3])))
+if hashlib.sha256(data).hexdigest()!=sys.argv[2]:raise RuntimeError('transfer checksum mismatch')
+p=json.loads(data);g={'__name__':'herdr_deploy_rpc','__file__':'<hc-deploy>'}
+try:exec(p['code'],g);g['rpc_entry'](p)
+finally:shutil.rmtree(folder)
+"""
+            argv = [
+                *transport,
+                "python3",
+                "-c",
+                loader,
+                state_path,
+                transfer,
+                str(len(chunks)),
+            ]
+            payload = b""
+        else:
+            argv = [*transport, *argv]
     reply = json.loads(run(argv, data=payload, timeout=timeout + 3))
     if not isinstance(reply, dict) or type(reply.get("ok")) is not bool:
         raise RuntimeError("invalid deployment RPC envelope")

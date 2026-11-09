@@ -16,6 +16,8 @@ Shallow publishing clones must fetch their full history first.
 `clients.json` in that state directory is the explicit client registry: laptop and
 Holocron initially. Other connected machines receive nothing unless registered.
 Files travel through authenticated `hc exec`, without GitHub access on clients.
+Large publications use bounded chunks and a full-payload checksum before execution,
+so complete repository histories can exceed hc's single-command input limit.
 Neither delivery nor bootstrap pulls, resets, or overwrites development checkouts.
 
 Each client stages verified source archives under `packages/<repo>/<commit>`.
