@@ -38,7 +38,24 @@ class DeploymentError(RuntimeError):
         self.kind = kind
 
 
+def git_environment(env=None):
+    """Honor explicit repository paths even when invoked by another Git hook."""
+    result = dict(os.environ if env is None else env)
+    names = (
+        subprocess.check_output(
+            ["git", "rev-parse", "--local-env-vars"], env=result, timeout=10
+        )
+        .decode()
+        .splitlines()
+    )
+    for name in names:
+        result.pop(name, None)
+    return result
+
+
 def run(argv, *, data=None, timeout=30, env=None):
+    if str(argv[0]) == "git":
+        env = git_environment(env)
     try:
         p = subprocess.run(
             [str(x) for x in argv],
@@ -295,6 +312,7 @@ def accept(state, pub):
                             b,
                         ],
                         capture_output=True,
+                        env=git_environment(),
                     )
                     if check.returncode not in (0, 1):
                         raise RuntimeError(check.stderr.decode())

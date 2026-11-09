@@ -3,10 +3,10 @@
 import concurrent.futures
 import importlib.util
 import json
-import os
 import shutil
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -22,6 +22,7 @@ class Releases(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="herdr-release-test-")
         self.root = Path(self.temp.name)
         self.state = self.root / "state"
+        self.env = {**deploy.git_environment(), "HERDR_DEPLOY_STATE": str(self.state)}
 
     def tearDown(self):
         self.temp.cleanup()
@@ -31,7 +32,7 @@ class Releases(unittest.TestCase):
             subprocess.check_output(
                 ["git", "-C", str(repo), *args],
                 stderr=subprocess.PIPE,
-                env={**os.environ, "HERDR_DEPLOY_STATE": str(self.state)},
+                env=self.env,
             )
             .decode()
             .strip()
@@ -66,6 +67,47 @@ class Releases(unittest.TestCase):
         damaged = dict(pub, archive=pub["archive"][:-4] + "AAAA")
         with self.assertRaises(RuntimeError):
             deploy.accept(self.root / "damaged", damaged)
+
+    def test_hook_environment_cannot_redirect_git_to_the_publishing_checkout(self):
+        sentinel = self.repo("sentinel")
+        source = self.repo("source")
+        self.commit(source, "distinct source")
+        before = self.git(sentinel, "rev-parse", "HEAD")
+        before_config = (sentinel / ".git/config").read_bytes()
+        code = """
+import importlib.util, pathlib, sys
+spec = importlib.util.spec_from_file_location('deploy', sys.argv[1])
+d = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(d)
+pub = d.make_publication(pathlib.Path(sys.argv[2]), 'chief-of-staff')
+state = pathlib.Path(sys.argv[3])
+assert d.accept(state, pub)['result'] == 'accepted'
+assert d.accept(state, pub)['result'] == 'duplicate'
+print(pub['commit'])
+"""
+        result = (
+            subprocess.check_output(
+                [
+                    sys.executable,
+                    "-c",
+                    code,
+                    str(Path(deploy.__file__)),
+                    str(source),
+                    str(self.state),
+                ],
+                env={
+                    **self.env,
+                    "GIT_DIR": str(sentinel / ".git"),
+                    "GIT_WORK_TREE": str(sentinel),
+                },
+            )
+            .decode()
+            .strip()
+        )
+        self.assertEqual(result, self.git(source, "rev-parse", "HEAD"))
+        self.assertEqual(self.git(sentinel, "rev-parse", "HEAD"), before)
+        self.assertEqual((sentinel / ".git/config").read_bytes(), before_config)
+        self.assertEqual(self.git(sentinel, "status", "--porcelain"), "")
 
     def test_ancestry_deduplication_and_divergence(self):
         repo = self.repo("chief-of-staff")
@@ -200,7 +242,7 @@ class Releases(unittest.TestCase):
         (self.state / "worker.py").write_bytes(
             (source / "scripts/deploy.py").read_bytes()
         )
-        env = {**os.environ, "HERDR_DEPLOY_STATE": str(self.state)}
+        env = self.env
         subprocess.run(
             ["sh", str(source / "scripts/install-hooks.sh"), str(repo)],
             env=env,
