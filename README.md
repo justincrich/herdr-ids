@@ -12,43 +12,27 @@ space sp7488… (holden)
     hc read t9 --lines 200
 ```
 
-## Install one machine
+## Deploy to laptop and Holocron
+
+Read [DEPLOYMENT.md](./DEPLOYMENT.md) for the shared release contract. Changes
+that reach main publish this package's exact commit to the laptop catalog.
+It combines that version with the accepted Chief of Staff version, then delivers
+both through `hc`. Offline publishers and clients retry automatically. Client
+development checkouts stay untouched.
 
 ```sh
-./install.sh                                   # this machine
-HERDR_APP_HOME=/path/to/home ./install.sh      # another app home
-herdr-app do layout.switch --name main-ids
+./scripts/verify.sh
+./bootstrap.sh laptop              # from this existing publishing clone
+./scripts/sync.sh --status
+./scripts/sync.sh --verify
 ```
 
-Revert any time with `herdr-app do layout.switch --name main`.
+Use `bootstrap.sh holocron` on Holocron. Both screens attach to one laptop Chief
+of Staff session. Worktree commits never deploy. Completion requires main landing
+and verified delivery on both screens; see DEPLOYMENT.md for rollback and evidence.
 
-## Standardize across devices
-
-Each device keeps its own checkout at `~/Projects/herdr-ids` and **symlinks** it into the Herdr app home, so the app runs the repo's files directly. `bootstrap.sh` clones on the first run, pulls on later runs, links, and switches the layout:
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
-```
-
-From any synced machine, `scripts/sync.sh` tells each device to do that pull:
-
-```sh
-./scripts/sync.sh                 # this device
-./scripts/sync.sh holocron        # this device + holocron
-./scripts/sync.sh --all           # every connected machine that has Herdr
-```
-
-Output is one line per device:
-
-```
-herdr-ids (repo: https://github.com/justincrich/herdr-ids)
-local        1.0.0   layout=main-ids errors=[]
-holocron     1.0.0   layout=main-ids errors=[]
-```
-
-The repo is the source of truth: commit and push before syncing, or remote devices pull the previous push. The script warns when the local tree is dirty. Each device records its build in `<app home>/.herdr-ids-version`; machines without Herdr are reported and skipped.
-
-Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whole standardization loop: one repo, one command, every machine on the same build.
+For scratch development only: `HERDR_APP_HOME=<scratch-home> ./install.sh`.
+Use an isolated `HC_SESSION` for native tests.
 
 ## What is in here
 
@@ -64,27 +48,10 @@ Bump `VERSION` when you change a mod, then run `sync.sh` again. That is the whol
 | `mods/ids-rename` | the rename dialog a pane name is typed into |
 | `layouts/main-ids.json` | `main` layout wired to the `ids-*` mods |
 | `layouts/terminals-ids.json` | `terminals` layout wired the same way |
-| `bootstrap.sh` | clone or pull this repo, link it, switch the layout |
-| `scripts/sync.sh` | pull + link here and on named machines, then verify |
+| `bootstrap.sh` | install hooks, initialize identity, install the retry service |
+| `scripts/sync.sh` | publish committed main; inspect, verify or roll back delivery |
 | `RECIPE.md` | the brief another agent can rebuild from |
 | `preview.png` | screenshot |
-
-## Adding a machine
-
-```sh
-curl -fsSL https://raw.githubusercontent.com/justincrich/herdr-ids/main/bootstrap.sh | sh
-```
-
-That clones into `~/Projects/herdr-ids`, symlinks it, and switches the layout. From a synced machine, `./scripts/sync.sh <machine>` runs the same bootstrap there, so the target clones itself.
-
-## Day 2
-
-1. Change a mod.
-2. Bump `VERSION`.
-3. `git commit -am "…" && git push`
-4. `./scripts/sync.sh --all`
-
-Push first: each device pulls from the repo, so a device only gets what is pushed.
 
 ## Publishing notes
 

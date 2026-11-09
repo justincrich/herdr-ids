@@ -14,80 +14,32 @@ The app this package plugs into is a separate checkout at **`../herdr-app`** (`~
 
 So when a request is about how Herdr itself behaves — panes, tabs, spaces, dragging, focus, key handling, the mod API, any new `herdr` import — **the base code for that work is `../herdr-app` (or `../herdr`), not this repo.** This repo only ships `mods/ids-*` and `layouts/*-ids.json`; it cannot change app behavior, only replace shipped panels and menus. If a request lands here that needs app-core work, say so and point at `../herdr-app` instead of stretching a mod to fake it.
 
-## How it reaches the app
+## Deployment and validation
 
-Each device keeps a checkout at `~/Projects/herdr-ids` and **symlinks** it into the Herdr app home. The app runs these files directly; nothing is copied.
+Read [DEPLOYMENT.md](./DEPLOYMENT.md) before changing deployment code. Both repos
+ship an identical `scripts/deploy.py`. `scripts/sync.sh` publishes only this
+repository's committed main to the serialized laptop catalog. Worktrees never
+deploy. Client installations use verified versioned archives, not checkout links.
+The explicit targets are laptop and Holocron; connected inference nodes are not
+targets. Both clients attach to the same preserved laptop Chief of Staff session.
 
-```
-~/.config/herdr-app/mods/ids-menu      -> ~/Projects/herdr-ids/mods/ids-menu
-~/.config/herdr-app/layouts/main-ids.json -> ~/Projects/herdr-ids/layouts/main-ids.json
-```
+Run `./bootstrap.sh <device-name>` in existing publishing clones to install the
+post-commit and post-merge hooks and the user-level retry service. Pre-commit has
+only cheap portable validation. Never put deployment or native window checks there.
+`./scripts/verify.sh` runs portable tests. The native suite documented in
+DEPLOYMENT.md and bounded mod checks remain mandatory release gates.
 
-`install.sh --link` makes those links; `install.sh --copy` makes a self-contained copy for a device without the repo. Each app home records what it runs in `.herdr-ids-version` and where it points in `.herdr-ids-source`.
+Make changes in isolated worktrees. Land through a pull request after `verify`
+is green. Bump VERSION for mod or layout changes. Completion requires observed
+main publications from both repositories, delivery receipts and screenshots from
+both clients, and demonstrated retry/recovery. `sync.sh --status` and `--verify`
+report actual delivery; a successful commit alone proves none of it.
 
-## Make a change
-
-1. Edit a mod or layout in this checkout.
-2. Validate: `herdr-app check mods/<name>` for every changed mod.
-3. Bump `VERSION` (mod or layout change only; docs alone don't need it).
-4. Commit and push. The pre-commit hook (`./scripts/install-hooks.sh` enables it) runs `herdr-app check` on every changed mod and then deploys this checkout, so the app runs what you committed. A worktree skips the deploy — it never owns the live app home. `git commit --no-verify` skips both.
-5. Sync: `./scripts/sync.sh --all` (or name machines).
-6. Verify the local symlink (below). This is always the last step, and the change is not finished until it passes.
-
-Push before syncing. Devices pull from the repo, so anything unpushed does not reach them, and `sync.sh` warns when the tree is dirty.
-
-```sh
-./scripts/sync.sh                 # this device
-./scripts/sync.sh holocron        # this device + holocron
-./scripts/sync.sh --all           # every connected machine that has Herdr
-```
-
-### The last step: verify the local symlink
-
-Always finish a change by proving the local app home runs *this* checkout, not a stale copy. The app executes the files through symlinks, so a missing or broken link means the edit never reached the app.
-
-```sh
-./scripts/check-home.sh                 # exit 0: the live home is this checkout
-home=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
-readlink "$home/mods/ids-menu"          # -> .../Projects/herdr-ids/mods/ids-menu
-readlink "$home/layouts/main-ids.json"  # -> .../Projects/herdr-ids/layouts/main-ids.json
-cat "$home/.herdr-ids-source"           # this checkout's path
-cat "$home/.herdr-ids-version"          # matches ./VERSION
-ls "$home/ids-icons" | head             # the glyph copies, not links into the checkout
-herdr-app status                        # layout=main-ids errors=[]
-```
-
-### The live home belongs to main, never to a worktree
-
-`install.sh` refuses to install a **linked worktree** into the live app home (`exit 3`), because the running Herdr would then render that branch's mods and layouts, and a layout reload drops the nodes the branch has not got. On 2026-11-08 exactly that took the agents/spaces sidebar out of every window. Test in a scratch home instead, and install main from the main checkout:
-
-```sh
-HERDR_APP_HOME=/tmp/herdr-test ./install.sh      # a worktree tests here
-cd ~/Projects/herdr-ids && ./install.sh          # main owns the live home
-./install.sh --force                             # deliberate exception only
-```
-
-Two more rules that keep the person's window intact:
-
-- **Never drive the live app's layout** from a worktree session. `layout.switch`, `layout.set`, `layout.reset`, `layout.hide` and `layout.show` change the window the person is looking at; point them at a scratch `HERDR_APP_HOME` and a scratch `HC_SESSION`.
-- **A reload can drop nodes.** When a layout file lost one, restore it by id: `herdr-app do layout.show --id sidebar` (`layout.show` returns `ok: true` for an id the layout still has).
-
-Check every changed `ids-*` mod and `*-ids.json` layout, not just the examples. `readlink` must print a path inside this checkout. If it prints nothing (a copied directory) or points somewhere else, run `./install.sh --link` and check again. Do not report the change done until the links resolve here and `herdr-app status` shows `errors=[]`.
-
-`ids-icons` is the exception, and it is the opposite: those files must be **real files inside the app home**, because the asset loader refuses a link that resolves outside it. `./install.sh` writes the copy and each `-bold` variant; re-run it after changing any glyph in `mods/ids-files/icons/`.
-
-## The commands
-
-| Command | What it does |
-|---|---|
-| `./install.sh` | link this checkout into `~/.config/herdr-app` |
-| `./install.sh --copy` | copy instead of link |
-| `./bootstrap.sh` | clone or pull, link, switch layout |
-| `./scripts/sync.sh [machines…]` | pull + link here and on machines, print version/layout/errors |
-| `./scripts/check-home.sh` | prove the live app home runs this main checkout (exit 1 names the repair) |
-| `herdr-app check mods/<name>` | load and render one mod once; the pass/fail gate |
-| `herdr-app status` | the running window: layout, overlays, mod errors |
-| `herdr-app do layout.switch --name main-ids` | apply the layout |
+Use `install.sh` only with a scratch app home during development. Never point the
+live home at a worktree, or mutate the live layout from worktree tests. Destructive
+failure tests must set both `HERDR_APP_HOME` and an isolated `HC_SESSION`.
+The release worker owns normal activation, workspace preservation, rollback, and
+reloading without restarting the app/core. Preserve unrelated checkout changes.
 
 ## What is where
 
@@ -171,8 +123,8 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 1. Copy the current `defaults/mods/*/main.js` (and any assets) from the app repo over the matching files here — for the pane headers, over `mods/ids-pane` and `mods/ids-terminals-pane`.
 2. Re-apply the hooks above.
-3. `herdr-app check` each mod.
-4. Bump `VERSION`, commit, push, `./scripts/sync.sh --all`.
+3. `./scripts/check-mod.sh` each mod.
+4. Bump `VERSION`, validate, land through a PR, and verify the main publication.
 5. If a release adds a menu item, add it to `ids-menu` too — this menu replaces Herdr's whole menu, it does not merge.
 
 ## Testing

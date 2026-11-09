@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+set -eu
+root=$(git rev-parse --show-toplevel)
+# Exit before invoking a coordinator or touching client state.
+[ -d "$root/.git" ] || exit 0
+[ "$(git branch --show-current)" = main ] || exit 0
+exec "$root/scripts/sync.sh" --hook
