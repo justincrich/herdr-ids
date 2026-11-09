@@ -285,7 +285,16 @@ def accept(state, pub):
             bundle.write_bytes(base64.b64decode(pub["bundle"]))
             run(["git", "-C", history, "bundle", "verify", bundle])
             run(
-                ["git", "-C", history, "fetch", "--no-write-fetch-head", bundle, "HEAD"]
+                [
+                    "git",
+                    "-C",
+                    history,
+                    "fetch",
+                    "--no-write-fetch-head",
+                    "--no-auto-maintenance",
+                    bundle,
+                    "HEAD",
+                ]
             )
             committed = run(
                 ["git", "-C", history, "archive", "--format=tar", pub["commit"]]
