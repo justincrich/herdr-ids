@@ -1,66 +1,6 @@
 #!/usr/bin/env sh
-# Make this device and the named hc machines pull the published herdr-ids build.
-#   ./scripts/sync.sh                 # this device
-#   ./scripts/sync.sh holocron        # this device + holocron
-#   ./scripts/sync.sh --all           # every connected machine that has Herdr
+# Publish only this repository's committed main; clients consume the catalog pair.
 set -eu
 here=$(cd "$(dirname "$0")/.." && pwd)
-
-status_line() {
-  python3 -c 'import json,sys
-try:
-    d = json.load(sys.stdin)
-    print("layout=%s errors=%s" % (d.get("layout"), d.get("errors")))
-except Exception:
-    print("no running window")'
-}
-
-install_here() {
-  "$here/install.sh" --link >/dev/null
-  "$here/scripts/install-hooks.sh" >/dev/null
-  printf '%-12s %-7s ' local "$(cat "$here/VERSION")"
-  herdr-app status 2>/dev/null | status_line
-}
-
-has_herdr() {
-  hc exec --on "$1" sh -c 'test -d ~/.config/herdr-app && command -v herdr-app >/dev/null' >/dev/null 2>&1
-}
-
-install_remote() {
-  m=$1
-  if ! has_herdr "$m"; then
-    printf '%-12s %-7s skipped (no Herdr)\n' "$m" "-"
-    return 0
-  fi
-  hc exec --on "$m" sh -c '
-    dir=$HOME/Projects/herdr-ids
-    repo=https://github.com/justincrich/herdr-ids
-    if [ -d "$dir/.git" ]; then git -C "$dir" pull --ff-only; else mkdir -p "$(dirname "$dir")" && git clone --depth 1 "$repo" "$dir"; fi
-    "$dir/install.sh" --link
-    git -C "$dir" config core.hooksPath .githooks
-    herdr-app do layout.switch --name main-ids >/dev/null 2>&1 || true
-  ' >/dev/null
-  printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/Projects/herdr-ids/VERSION')"
-  hc exec --on "$m" herdr-app status 2>/dev/null | status_line
-}
-
-targets=""
-for a in "$@"; do
-  case "$a" in
-    --all)
-      for m in $(hc machine ls --json 2>/dev/null | python3 -c 'import json,sys
-print(" ".join(m["name"] for m in json.load(sys.stdin).get("machines",[]) if m.get("state")=="connected"))'); do
-        targets="$targets $m"
-      done ;;
-    -*) echo "unknown flag: $a" >&2; exit 2 ;;
-    *) targets="$targets $a" ;;
-  esac
-done
-
-if [ -n "$(git -C "$here" status --porcelain 2>/dev/null)" ]; then
-  echo "warning: local changes are not pushed; remote devices get the repo's version" >&2
-fi
-
-echo "herdr-ids (repo: https://github.com/justincrich/herdr-ids)"
-install_here
-for m in $targets; do install_remote "$m"; done
+export PATH="$HOME/.local/bin:$HOME/.bun/bin:/opt/homebrew/bin:$PATH"
+exec python3 "$here/scripts/deploy.py" --repo herdr-ids --root "$here" "$@"
