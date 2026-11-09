@@ -30,7 +30,7 @@ Each device keeps a checkout at `~/Projects/herdr-ids` and **symlinks** it into 
 1. Edit a mod or layout in this checkout.
 2. Validate: `herdr-app check mods/<name>` for every changed mod.
 3. Bump `VERSION` (mod or layout change only; docs alone don't need it).
-4. Commit and push.
+4. Commit and push. The pre-commit hook (`./scripts/install-hooks.sh` enables it) runs `herdr-app check` on every changed mod and then deploys this checkout, so the app runs what you committed. A worktree skips the deploy — it never owns the live app home. `git commit --no-verify` skips both.
 5. Sync: `./scripts/sync.sh --all` (or name machines).
 6. Verify the local symlink (below). This is always the last step, and the change is not finished until it passes.
 

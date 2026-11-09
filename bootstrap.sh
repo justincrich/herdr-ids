@@ -15,5 +15,6 @@ else
 fi
 
 "$dir/install.sh" --link
+"$dir/scripts/install-hooks.sh" >/dev/null
 herdr-app do layout.switch --name main-ids >/dev/null 2>&1 || true
 printf 'herdr-ids %s ready: %s -> %s\n' "$(cat "$dir/VERSION")" "$dir" "${HERDR_APP_HOME:-$HOME/.config/herdr-app}"

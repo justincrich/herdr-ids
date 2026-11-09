@@ -1,0 +1,32 @@
+#!/usr/bin/env sh
+# Deploy this checkout before the commit lands, so the app runs what was
+# committed instead of the last thing someone installed by hand.
+#
+# A linked worktree deploys nothing: it never owns the live app home (install.sh
+# refuses that with exit 3), so it skips and says so. Skip with: git commit --no-verify
+set -eu
+root=$(git rev-parse --show-toplevel)
+home=${HERDR_APP_HOME:-$HOME/.config/herdr-app}
+
+if [ -f "$root/.git" ]; then
+  printf 'pre-commit: worktree — not deploying; the live app home belongs to main\n' >&2
+  exit 0
+fi
+if [ ! -d "$home" ]; then
+  printf 'pre-commit: no app home at %s — not deploying\n' "$home" >&2
+  exit 0
+fi
+
+# A changed mod must load and render before it can reach the app.
+changed=$(git diff --cached --name-only --diff-filter=ACMR -- mods | sed -n 's#^mods/\(ids-[^/]*\)/.*#\1#p' | sort -u)
+if [ -n "$changed" ] && command -v herdr-app >/dev/null 2>&1; then
+  for mod in $changed; do
+    if ! (cd "$root" && herdr-app check "mods/$mod" >/dev/null 2>&1); then
+      printf 'pre-commit: herdr-app check failed for %s (fix it, or commit with --no-verify)\n' "$mod" >&2
+      exit 1
+    fi
+  done
+fi
+
+"$root/install.sh" --link >/dev/null
+printf 'pre-commit: deployed herdr-ids %s to %s\n' "$(cat "$root/VERSION")" "$home" >&2

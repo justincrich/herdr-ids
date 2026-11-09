@@ -17,6 +17,7 @@ except Exception:
 
 install_here() {
   "$here/install.sh" --link >/dev/null
+  "$here/scripts/install-hooks.sh" >/dev/null
   printf '%-12s %-7s ' local "$(cat "$here/VERSION")"
   herdr-app status 2>/dev/null | status_line
 }
@@ -36,6 +37,7 @@ install_remote() {
     repo=https://github.com/justincrich/herdr-ids
     if [ -d "$dir/.git" ]; then git -C "$dir" pull --ff-only; else mkdir -p "$(dirname "$dir")" && git clone --depth 1 "$repo" "$dir"; fi
     "$dir/install.sh" --link
+    git -C "$dir" config core.hooksPath .githooks
     herdr-app do layout.switch --name main-ids >/dev/null 2>&1 || true
   ' >/dev/null
   printf '%-12s %-7s ' "$m" "$(hc exec --on "$m" sh -c 'cat ~/Projects/herdr-ids/VERSION')"
