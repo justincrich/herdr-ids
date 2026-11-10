@@ -105,13 +105,21 @@ function items(p, git) {
         ...(inTab ? [["Close pane", "pane.close", { pane: tg.pane }]] : []),
       ];
     }
-    case "tab":
+    case "tab": {
+      const here = spaces().find((s) => s.id === tg.space);
+      const local = (s) => s.machine == null || s.machine === "";
+      const moves = here && local(here)
+        ? spaces().filter((s) => s.id !== here.id && local(s)).map((s) => [s.name, "tab.reassign", { id: tg.id, space: s.id }])
+        : [];
       return [
         ["Copy IDs", "copy.ids", {}],
         ["Rename", "tab.rename", { id: tg.id }],
         ["New tab", "tab.new", { space: tg.space }],
         ["Close", "tab.close", { id: tg.id }],
+        // kb:Menu clips past 85% of the window: the popup stops at that height and does not scroll, so a later row cannot be clicked.
+        ...moves,
       ];
+    }
     case "space":
       return [
         ["Copy IDs", "copy.ids", {}],
