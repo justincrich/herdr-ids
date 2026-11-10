@@ -31,10 +31,10 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - The app only fills the Agents list from terminals that report a status word. A live terminal on another machine that never reports one still gets a row here, named the same way as any agent row, and clicking it opens that pane. It has no status, no age, and no pin control.
 - The API has no "this is an agent" flag, so the rows are whatever runs on another machine that is not a shell. A remote editor or build is admitted too — a known limit, taken because a row that opens its pane beats a terminal nobody can see.
 - Left out: shells, every quiet program on this computer, and a remote program that is not in a pane. These are terminals, never OS processes.
-- A sub-agent the program started shows under its row, as sub-agents do under an agent; it gets no row of its own unless pinned.
+- A sub-agent the program started shows under its row, as sub-agents do under an agent; it gets no row of its own unless it reports a status and is pinned.
 - **Grouped by device and space** orders rows the way the app does: machines, then each machine's spaces, tabs, and panes. Every machine with a row gets a device heading (`This computer`, or the machine's name) above its space headings; folding it folds its spaces. Device headings carry no count and no status.
 - **Priority** keeps its sections and puts these rows in Idle.
-- Looking at one of these rows does not hold the Done section open or evict a finished agent from it.
+- Looking at one of these rows never makes it the row that holds Done open — nothing without a status is ever held. Leaving a finished agent for any other pane, these rows included, ends its hold exactly as it does today.
 
 ## Files panel icons
 

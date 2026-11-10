@@ -111,6 +111,9 @@ function placeOrder(machineList, spaceList, paneList) {
   const tabAt = new Map(spaceList.flatMap((s) => (s.tabs ?? []).map((tab, i) => [tab.id, i])));
   const paneAt = new Map(paneList.map((p, i) => [p.pane, i]));
   const beyond = (map) => map.size;
+  // A machine missing from machines() ties with every other missing one, which
+  // would double a device heading. Safe today: the app drops a space whose
+  // machine is no longer listed, so no row ever names one.
   return (a) => [
     machineAt.get(machineOf(a)) ?? beyond(machineAt),
     spaceAt.get(a.space) ?? beyond(spaceAt),
@@ -232,7 +235,8 @@ export default class Agents extends View {
 
   // Looking at a done agent makes it idle; it stays with Done until you leave
   // it rather than drop away under you. Any other change moves it at once.
-  // A row with no status (a process row) can't be holding Done for anyone.
+  // Nothing without a status is an agent, so nothing without one is ever held;
+  // the guard keeps that true if this call ever moves.
   hold(list) {
     const cur = list.find((a) => a.focused && a.status != null);
     const same = cur && cur.address === this.held?.address;
@@ -449,7 +453,9 @@ export default class Agents extends View {
           .child(div().flex_1().min_w(0).whitespace_nowrap().text_right().text_color(t.muted).child(String(i + 1)))
           .child(h_flex().w(14).flex_none().items_center().justify_center().child(this.status(t, a, true)));
       }
-      const when = this.since(a);
+      // A process row has no status, so no age: `changed` can still hold a stamp
+      // from a time it reported one, and that is not news about this row.
+      const when = a.process ? 0 : this.since(a);
       const idle = a.status === "idle" && !a.focused;
       const isPinned = a.pinned;
       const pin = div()
@@ -485,6 +491,9 @@ export default class Agents extends View {
         .cursor_pointer()
         .hover((s) => s.bg(t.hover))
         .on_hover((on, cx) => {
+          // A process row has no pin and no age chip, so hovering reveals
+          // nothing; skip the write and the repaint it would cost.
+          if (a.process) return;
           if (on) this.hovered = a.address;
           else if (this.hovered === a.address) this.hovered = null;
           cx.notify();
@@ -505,7 +514,7 @@ export default class Agents extends View {
         // A process row's pinned state is read by nothing, so offering the
         // control would promise something it cannot do.
         .when(!a.process && this.hovered === a.address, el => el.child(pin))
-        .when(this.hovered !== a.address && !a.process && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
+        .when(this.hovered !== a.address && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
         .child(this.status(t, a, byPriority && !isPinned));
     };
 
