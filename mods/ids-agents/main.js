@@ -3,7 +3,7 @@
 
 import { View, div, image, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { agents, terminals, panes, focused, spaces, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, notify } from "herdr";
+import { agents, terminals, panes, focused, spaces, machines, run, theme, shared, setShared, setAgentOrder, openOverlay, closeOverlay, props, window, layout, notify } from "herdr";
 import { tagOf, cleanTitle, tells } from "./abbr.js";
 
 function find(node, id) {
@@ -53,6 +53,79 @@ function title(tab, l) {
   const telling = live && live !== prog && !/^[~/]|^[A-Za-z]:\\/.test(live) && !live.includes("@") && live.toLowerCase() !== l?.program?.key;
   return (tab.name === prog || !tab.named) && telling ? live : tab.name;
 }
+
+// A machine-qualified id from a label, which a remote machine writes without its
+// own prefix (`herdr.space` there is `sp…`, the app calls it `vps/sp…`).
+const qualify = (id, machine) => (id.startsWith(`${machine}/`) ? id : `${machine}/${id}`);
+const machineOf = (a) => (a.address?.includes("/") ? a.address.split("/")[0] : null);
+
+// Live terminals on other machines that never reported a status, so agents()
+// leaves them out entirely. The API cannot tell an agent from anything else
+// that isn't a shell: the app gives every unreported program `agent: false`, so
+// `program.shell === false` is the only exclusion there is, and a remote editor
+// or build is admitted too. That is a known, accepted limit — a row that opens
+// its pane beats a terminal nobody can see. Locals stay out: a quiet local
+// program is the person's own business, and its pane is already on screen.
+function processRows(all, spaceList, paneList, listed) {
+  const paneAt = new Map(paneList.filter((p) => p.terminal).map((p) => [p.terminal, p]));
+  const spaceAt = new Map(spaceList.map((s) => [s.id, s]));
+  const rows = [];
+  for (const t of all) {
+    const address = t.address ?? "";
+    const machine = machineOf(t);
+    if (!machine || t.state !== "live" || listed.has(address) || t.parent) continue;
+    if (!t.program || t.program.shell !== false) continue;
+    const pane = paneAt.get(address);
+    const raw = t.labels?.["herdr.space"];
+    if (!pane || !raw) continue;
+    const space = qualify(raw, machine);
+    const entry = spaceAt.get(space);
+    if (!entry) continue;
+    const rawTab = t.labels?.["herdr.tab"];
+    const tab = rawTab ? qualify(rawTab, machine) : null;
+    rows.push({
+      address,
+      pane: pane.pane,
+      space,
+      space_name: entry.name,
+      tab: tab && entry.tabs?.some((x) => x.id === tab) ? tab : null,
+      machine,
+      status: null,
+      program: t.program,
+      title: t.title ?? "",
+      seq: 0,
+      pinned: false,
+      focused: !!pane.focused,
+      process: true,
+    });
+  }
+  return rows;
+}
+
+// Where a row sits in the app's own order: machines() first (null is this
+// computer), then spaces(), then each space's tabs, then panes(). Unknown ids go
+// last rather than inventing a position.
+function placeOrder(machineList, spaceList, paneList) {
+  const machineAt = new Map(machineList.map((m, i) => [m.name ?? null, i]));
+  const spaceAt = new Map(spaceList.map((s, i) => [s.id, i]));
+  const tabAt = new Map(spaceList.flatMap((s) => (s.tabs ?? []).map((tab, i) => [tab.id, i])));
+  const paneAt = new Map(paneList.map((p, i) => [p.pane, i]));
+  const beyond = (map) => map.size;
+  return (a) => [
+    machineAt.get(machineOf(a)) ?? beyond(machineAt),
+    spaceAt.get(a.space) ?? beyond(spaceAt),
+    a.tab == null ? Infinity : (tabAt.get(a.tab) ?? Infinity),
+    paneAt.get(a.pane) ?? beyond(paneAt),
+  ];
+}
+
+const byPlace = (order) => (x, y) => {
+  const a = order(x);
+  const b = order(y);
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+  return 0;
+};
+
 const RANK = { blocked: 4, done: 3, working: 2, idle: 1 };
 // What another session needs to find this terminal or agent, and how to read it.
 function copyText(t, extra) {
@@ -84,7 +157,7 @@ const kidStatus = (k, listed) => {
 };
 const SORTS = [
   { id: "priority", label: "Priority", icon: "clock" },
-  { id: "grouped", label: "Grouped by space", icon: "layers" },
+  { id: "grouped", label: "Grouped by device and space", icon: "layers" },
 ];
 const sortOf = () => SORTS.find((s) => s.id === shared("agents.sort")) ?? SORTS[0];
 const SECTION = { 4: "Needs you", 3: "Done", 2: "Working", 1: "Idle" };
@@ -159,8 +232,9 @@ export default class Agents extends View {
 
   // Looking at a done agent makes it idle; it stays with Done until you leave
   // it rather than drop away under you. Any other change moves it at once.
+  // A row with no status (a process row) can't be holding Done for anyone.
   hold(list) {
-    const cur = list.find((a) => a.focused);
+    const cur = list.find((a) => a.focused && a.status != null);
     const same = cur && cur.address === this.held?.address;
     // Arriving, or any change but done turning idle, sets what it was.
     if (!same || cur.status !== "idle") this.held = cur ? { address: cur.address, rank: RANK[cur.status] ?? 0 } : null;
@@ -264,16 +338,25 @@ export default class Agents extends View {
     const now = Date.now();
     this.track(list, now);
     this.hold(list);
+    const spaceList = spaces();
+    const paneList = panes();
+    const procs = processRows(all, spaceList, paneList, this.listed);
     // A kept sub-agent (one with a pane) is in agents() too: where a tree shows
-    // it, it gets no row of its own, unless it's pinned.
-    const nested = new Set(collapsed ? [] : list.flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
+    // it — under an agent or a process row — it gets no row of its own, unless
+    // it's pinned.
+    const nested = new Set(collapsed ? [] : [...list, ...procs].flatMap((a) => this.tree(all, a.address).map((s) => s.t.address)));
     list = list.filter((a) => a.pinned || !nested.has(a.address));
     const byPriority = sort.id === "priority";
     const urgency = new Map(list.map((a) => [a.address, Math.max(this.rank(a), ...this.tree(all, a.address).map((s) => RANK[kidStatus(s.t, this.listed)] ?? 0))]));
-    const rankOf = (a) => urgency.get(a.address);
-    if (byPriority) list = [...list].sort((x, y) => rankOf(y) - rankOf(x) || this.since(y) - this.since(x) || y.seq - x.seq);
+    // A row with no status (a process row) ranks below every agent, and its
+    // seq/since are 0, so the numeric sorts below never meet a NaN.
+    const rankOf = (a) => urgency.get(a.address) ?? 0;
     const pinned = list.filter((a) => a.pinned);
-    const rest = list.filter((a) => !a.pinned);
+    const rest = [...list.filter((a) => !a.pinned), ...procs];
+    if (byPriority) rest.sort((x, y) => rankOf(y) - rankOf(x) || this.since(y) - this.since(x) || (y.seq ?? 0) - (x.seq ?? 0));
+    // Grouped: one order — machine, space, tab, pane — so a process sits inside
+    // its own space rather than at the end of the list.
+    else rest.sort(byPlace(placeOrder(machines(), spaceList, paneList)));
     list = [...pinned, ...rest];
     setAgentOrder(list.map((a) => a.address));
 
@@ -314,8 +397,8 @@ export default class Agents extends View {
     // pane, a tab someone named, or the agent's own title, never an automatic
     // tab number unless two rows would otherwise read the same.
     // Read the pane snapshot once: every host read copies the whole list into JS.
-    const leads = leadPanes(panes());
-    const tabLabels = new Map(spaces().flatMap(s => s.tabs).map(tab => [tab.id, title(tab, leads.get(tab.id))]));
+    const leads = leadPanes(paneList);
+    const tabLabels = new Map(spaceList.flatMap(s => s.tabs).map(tab => [tab.id, title(tab, leads.get(tab.id))]));
     // A row's name, in order: the name whoever started the terminal gave it
     // (`hc run --name`, which a runner sets), then the name someone gave the
     // pane, tagged with its project ("Fix bug [hid]"), then the pane's own
@@ -328,7 +411,7 @@ export default class Agents extends View {
       const n = String(x?.name ?? "").trim();
       return [x.address, n || null];
     }));
-    const folderOf = new Map(panes().map((p) => [p.pane, p.cwd]));
+    const folderOf = new Map(paneList.map((p) => [p.pane, p.cwd]));
     // One name chain for a pane's row and a sub-agent's row alike.
     const nameOf = (t) => {
       const given = termNames.get(t.address);
@@ -417,22 +500,69 @@ export default class Agents extends View {
         .child(h_flex().flex_1().min_w(0).gap(5).items_center()
           .child(div().min_w(0).max_w(full && more ? 120 : 200).truncate().text_color(idle ? t.muted : t.foreground).child(name))
           .when(full && Boolean(more), el => el.child(div().flex_1().min_w(0).truncate().text_color(t.dim).child(`\u00b7 ${more}`))))
-        .when(Boolean(machine), el => el.child(div().text_size(10).text_color(t.dim).child(machine)))
+        .when(Boolean(machine) && (byPriority || isPinned), el => el.child(div().text_size(10).text_color(t.dim).child(machine)))
         .when(subs.length > 0, el => el.child(fold(a, subs)))
-        .when(this.hovered === a.address, el => el.child(pin))
-        .when(this.hovered !== a.address && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
+        // A process row's pinned state is read by nothing, so offering the
+        // control would promise something it cannot do.
+        .when(!a.process && this.hovered === a.address, el => el.child(pin))
+        .when(this.hovered !== a.address && !a.process && Boolean(when), el => el.child(div().flex_none().text_size(11).text_color(t.dim).child(duration(now - when))))
         .child(this.status(t, a, byPriority && !isPinned));
     };
 
-    // Groups in list order: spaces (grouped) or priority sections. Agents of a
-    // space are next to each other in agents(), so neighbours make a group.
+    // Groups in list order: priority sections, or — grouped — devices, each
+    // holding its spaces. Neighbours in the sorted list make a group. A device
+    // heading exists for every machine with a row, which is how a machine whose
+    // spaces have no reporting agent still gets one.
     const groups = pinned.length ? [{ id: "pinned", label: "Pinned", status: null, members: pinned }] : [];
-    for (const a of rest) {
-      const r = rankOf(a) || RANK.idle;
-      const id = byPriority ? `sec-${r}` : `sp-${a.space}`;
-      if (groups.at(-1)?.id === id) groups.at(-1).members.push(a);
-      else groups.push({ id, label: byPriority ? SECTION[r] : a.space_name || "", status: byPriority ? SECTION_STATUS[r] : null, members: [a] });
+    if (byPriority) {
+      for (const a of rest) {
+        const r = rankOf(a) || RANK.idle;
+        const id = `sec-${r}`;
+        if (groups.at(-1)?.id === id) groups.at(-1).members.push(a);
+        else groups.push({ id, label: SECTION[r], status: SECTION_STATUS[r], members: [a] });
+      }
+    } else {
+      for (const a of rest) {
+        const machine = machineOf(a);
+        let dev = groups.at(-1);
+        if (!dev?.device || dev.machine !== machine) {
+          dev = { id: `dev-${machine ?? ""}`, label: machine ?? "This computer", machine, device: true, groups: [] };
+          groups.push(dev);
+        }
+        const id = `sp-${a.space}`;
+        let g = dev.groups.at(-1);
+        if (g?.id !== id) {
+          g = { id, label: a.space_name || "", status: null, members: [] };
+          dev.groups.push(g);
+        }
+        g.members.push(a);
+      }
     }
+
+    // A device heading: a quiet section label over its spaces, not a second
+    // accordion with its own count or status. Folding it folds every space.
+    const deviceHeader = (d) => {
+      const open = !this.folded.has(d.id);
+      return h_flex()
+        .id(d.id)
+        .px(8)
+        .pt(10)
+        .h(26)
+        .flex_none()
+        .gap(5)
+        .items_center()
+        .text_size(10.5)
+        .font_semibold()
+        .text_color(t.muted)
+        .cursor_pointer()
+        .hover((s) => s.text_color(t.foreground))
+        .on_click((_e, cx) => {
+          open ? this.folded.add(d.id) : this.folded.delete(d.id);
+          cx.notify();
+        })
+        .child(svg(`mods/workspace-chrome/chevron-${open ? "down" : "right"}.svg`).size(10).flex_none().text_color(t.dim))
+        .child(div().truncate().child(d.label));
+    };
 
     // A group's header; it folds the group. Folded, it says how many and the most urgent state.
     const header = (g) => {
@@ -461,9 +591,11 @@ export default class Agents extends View {
           .when(!byPriority && top && top !== "idle", (el) => el.child(this.status(t, { status: top }, true)))
           .child(svg("mods/workspace-chrome/chevron-right.svg").size(11).flex_none().text_color(t.dim)));
     };
+    const groupRows = (g) => [header(g), ...(this.folded.has(g.id) ? [] : g.members.flatMap(withKids))];
+    const deviceRows = (d) => [deviceHeader(d), ...(this.folded.has(d.id) ? [] : d.groups.flatMap(groupRows))];
     const rows = collapsed
       ? list.flatMap(withKids)
-      : groups.flatMap((g) => [header(g), ...(this.folded.has(g.id) ? [] : g.members.flatMap(withKids))]);
+      : groups.flatMap((g) => (g.device ? deviceRows(g) : groupRows(g)));
 
     return v_flex()
       .size_full()

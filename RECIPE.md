@@ -12,6 +12,8 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - **Rename pane** is the second item on a pane's right-click menu — the menu opens on the terminal area and on the pane's header. Double-clicking a pane's name, or the pen button in its header, does the same.
 - Every pane header reads `Name Fix [hid]`: the pane's name, then the tag of the project it is in.
 - Right-clicking an agent row in the Agents sidebar opens a popup with **Copy IDs**, **Copy terminal address**, and **Copy agent session** (when the agent reports one).
+- The Agents sidebar has two orders, chosen from the button beside its tab: **Grouped by device and space** — a quiet heading per machine, then a heading per space — and **Priority** — Needs you, Done, Working, Idle.
+- A live non-shell terminal on another machine shows in the Agents sidebar even when its program never reports a status. Clicking it opens its pane.
 - Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy relative path**.
 - Each action shows a toast: **IDs copied** for the block, **Copied** for a single value.
 
@@ -23,6 +25,16 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Remote terminals keep the machine-qualified form, e.g. `box/t7`, so the `hc read` line works from any machine that has the machine added.
 - Right-clicking an agent row opens the menu; it does not focus or open the agent.
 - Nothing is run and nothing is fetched; the only side effect is the clipboard write.
+
+## Agents on other machines
+
+- The app only fills the Agents list from terminals that report a status word. A live terminal on another machine that never reports one still gets a row here, named the same way as any agent row, and clicking it opens that pane. It has no status, no age, and no pin control.
+- The API has no "this is an agent" flag, so the rows are whatever runs on another machine that is not a shell. A remote editor or build is admitted too — a known limit, taken because a row that opens its pane beats a terminal nobody can see.
+- Left out: shells, every quiet program on this computer, and a remote program that is not in a pane. These are terminals, never OS processes.
+- A sub-agent the program started shows under its row, as sub-agents do under an agent; it gets no row of its own unless pinned.
+- **Grouped by device and space** orders rows the way the app does: machines, then each machine's spaces, tabs, and panes. Every machine with a row gets a device heading (`This computer`, or the machine's name) above its space headings; folding it folds its spaces. Device headings carry no count and no status.
+- **Priority** keeps its sections and puts these rows in Idle.
+- Looking at one of these rows does not hold the Done section open or evict a finished agent from it.
 
 ## Files panel icons
 
@@ -58,7 +70,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `mods/ids-pane/abbr.js` — `projectOf(cwd)`, `abbr(name)` and `tagOf(cwd)`: the project a folder belongs to and its three-letter tag, plus `cleanTitle`/`tells` for reading an agent's title as a name. `mods/ids-terminals-pane/abbr.js` is the same file (a mod can only import from its own folder).
 - `mods/ids-terminals-pane/` — the same for the `terminals` layout, over the shipped `terminals-pane` header.
 - `mods/ids-rename/` — the rename dialog: a text field (an `InputState`), Save, Cancel, Esc. Save writes the name into the same shared map with `setShared`, which persists it and re-renders every mod; an empty name deletes the entry. It also drops entries for panes that no longer exist.
-- Data comes from `spaces()`, `panes()`, `agents()`, `terminals()` and `focused()` in the `herdr` module; the pane names come from `shared()`/`setShared()`; clipboard and toast come from the view `Context` and `notify()`.
+- Data comes from `spaces()`, `panes()`, `agents()`, `terminals()`, `machines()` and `focused()` in the `herdr` module; the pane names come from `shared()`/`setShared()`; clipboard and toast come from the view `Context` and `notify()`.
 
 ## Watch out
 
@@ -78,4 +90,6 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking a file shows **Copy path** and **Copy relative path**.
 - The Files panel shows a glyph on every row, a `folder-open` on an expanded folder, and the file you opened in a heavier glyph and semibold name.
 - Right-clicking a pane shows **Copy IDs** first and **Rename pane** second; saving a name shows it in that pane's header and in the copied block, and saving an empty one puts the program's title back.
+- In **Grouped by device and space**, every machine with a row has a device heading above its space headings, and folding a device hides its spaces.
+- A live non-shell terminal on another machine that reports no status still has a row, and clicking it opens that pane.
 - `herdr-app status` reports no mod errors.
