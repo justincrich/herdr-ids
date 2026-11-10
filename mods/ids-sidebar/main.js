@@ -28,7 +28,7 @@ const TABS = {
 // The two ways the agents list sorts, so the strip's icon says which is on.
 const SORTS = [
   { id: "priority", label: "Priority", icon: "clock" },
-  { id: "grouped", label: "Grouped by space", icon: "layers" },
+  { id: "grouped", label: "Grouped by device and space", icon: "layers" },
 ];
 
 // The sidebar narrows to a rail (76px on macOS, room for the window buttons);
