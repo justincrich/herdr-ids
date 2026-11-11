@@ -154,3 +154,16 @@ fix: keep the agent menu open when the row loses focus
 feat: copy relative path from the file panel
 docs: explain the symlink install
 ```
+
+## Test-command templates
+
+Verify commands in sprint task files must take one of these forms (read by brain's
+`check_verify_commands.py`). Keep each list on one line; the resolver cannot read a
+list spread over several lines.
+
+<!-- kb-skills-config begin -->
+```yaml
+shared:
+  test-command-templates: ["pnpm vitest run {file}", "pnpm vitest run {file} -t {name}", "pnpm vitest run {file} --testNamePattern={name}", "pnpm vitest run --config {config} {file}", "pnpm vitest run --config {config} {file} -t {name}", "npx vitest run {file}", "npx vitest run {file} -t {name}", "npx vitest run {file} --testNamePattern={name}", "npx vitest run --config {config} {file}", "npx vitest run --config {config} {file} -t {name}", "bunx vitest run {file}", "bunx vitest run {file} -t {name}", "bunx vitest run {file} --testNamePattern={name}", "bunx vitest run --config {config} {file}", "bunx vitest run --config {config} {file} -t {name}", "bun test {file}", "bun test {file} -t {name}", "bun test {file} --test-name-pattern={name}", "node --test {file}", "pnpm jest {file}", "pnpm jest {file} -t {name}", "npx jest {file}", "npx jest {file} -t {name}", "pnpm playwright test {file}", "pnpm playwright test {file} -g {name}", "npx playwright test {file}", "npx playwright test {file} -g {name}", "python3 -m unittest {file}", "python3 -m unittest {file} -k {name}"]
+```
+<!-- kb-skills-config end -->
