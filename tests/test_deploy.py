@@ -22,7 +22,13 @@ class Releases(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(prefix="herdr-release-test-")
         self.root = Path(self.temp.name)
         self.state = self.root / "state"
-        self.env = {**deploy.git_environment(), "HERDR_DEPLOY_STATE": str(self.state)}
+        # These repos are disposable fixtures. ALLOW_MAIN_BRANCH lets the ~/bin/git
+        # branch guard permit the deliberate branch switches the tests make.
+        self.env = {
+            **deploy.git_environment(),
+            "HERDR_DEPLOY_STATE": str(self.state),
+            "ALLOW_MAIN_BRANCH": "1",
+        }
 
     def tearDown(self):
         self.temp.cleanup()
