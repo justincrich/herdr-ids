@@ -137,7 +137,7 @@ function items(p, git) {
     case "files":
       return [
         ["Copy path", "clipboard.copy", { text: `${tg.root}/${tg.path}` }],
-        ["Copy relative path", "clipboard.copy", { text: tg.path }],
+        ["Copy path (relative)", "clipboard.copy", { text: tg.path }],
       ];
     default:
       return [

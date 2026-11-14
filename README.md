@@ -38,7 +38,7 @@ Use an isolated `HC_SESSION` for native tests.
 
 | Path | Purpose |
 |---|---|
-| `mods/ids-menu` | the copy menus (IDs, path, relative path) |
+| `mods/ids-menu` | the copy menus (IDs, path, path (relative)) |
 | `mods/ids-agents` | Agents sidebar with the right-click menu |
 | `mods/ids-files` | Files panel: right-click menu, a glyph per file kind, and an open/selected state |
 | `mods/ids-spaces`, `mods/ids-tabs`, `mods/ids-terminals-bar` | shipped panels repointed at `ids-menu` |

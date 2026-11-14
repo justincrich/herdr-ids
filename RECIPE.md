@@ -14,7 +14,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking an agent row in the Agents sidebar opens a popup with **Copy IDs**, **Copy terminal address**, and **Copy agent session** (when the agent reports one).
 - The Agents sidebar has two orders, chosen from the button beside its tab: **Grouped by device and space** — a quiet heading per machine, then a heading per space — and **Priority** — Needs you, Done, Working, Idle.
 - A live non-shell terminal on another machine shows in the Agents sidebar even when its program never reports a status. Clicking it opens its pane.
-- Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy relative path**.
+- Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy path (relative)**.
 - Each action shows a toast: **IDs copied** for the block, **Copied** for a single value.
 
 ## How it behaves
@@ -87,7 +87,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `herdr-app check <home>/mods/ids-menu` passes, and so does each other `ids-*` mod.
 - Right-clicking a space shows **Copy IDs** first; pasting yields a block with the space id and an `hc read … --lines 200` line.
 - Right-clicking an agent row opens a popup with **Copy IDs**, **Copy terminal address**, and, when reported, **Copy agent session**.
-- Right-clicking a file shows **Copy path** and **Copy relative path**.
+- Right-clicking a file shows **Copy path** and **Copy path (relative)**.
 - The Files panel shows a glyph on every row, a `folder-open` on an expanded folder, and the file you opened in a heavier glyph and semibold name.
 - Right-clicking a pane shows **Copy IDs** first and **Rename pane** second; saving a name shows it in that pane's header and in the copied block, and saving an empty one puts the program's title back.
 - In **Grouped by device and space**, every machine with a row has a device heading above its space headings, and folding a device hides its spaces.
