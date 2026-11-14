@@ -45,7 +45,7 @@ reloading without restarting the app/core. Preserve unrelated checkout changes.
 
 | Path | Purpose |
 |---|---|
-| `mods/ids-menu/main.js` | every copy menu: `Copy IDs`, `Copy path`, `Copy relative path`, agent items |
+| `mods/ids-menu/main.js` | every copy menu: `Copy IDs`, `Copy path`, `Copy path (relative)`, agent items |
 | `mods/ids-agents/main.js` | Agents sidebar; right-click opens `ids-menu` with `tab: "agent"` |
 | `mods/ids-files/main.js` | Files panel; right-click opens `ids-menu` with `tab: "files"`; `TYPE`/`NAME` map a file to one glyph |
 | `mods/ids-files/icons/` | the glyph set (Lucide, ISC) and the licence; `install.sh` copies it to `<app home>/ids-icons` and writes each `-bold` copy |
@@ -68,7 +68,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - the `idsText(p)` helper (builds the block from `terminals()`, `panes()`, `spaces()`)
 - `["Copy IDs", "copy.ids", {}]` first in the `pane`, `tab`, and `space` cases
 - `["Rename pane", "pane.rename", {}]` second in the `pane` case; `choose()` handles it by opening `ids-rename` with `{ pane, current }`
-- `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, relative path)
+- `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, `Copy path (relative)`)
 - `choose()` handles `copy.ids` and `clipboard.copy` with `cx.write_to_clipboard(...)` plus a toast
 
 **`mods/ids-agents/main.js`**
