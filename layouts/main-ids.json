@@ -75,6 +75,7 @@
             "px": 42
           },
           "window_drag": true,
+          "drop_pane": true,
           "children": []
         },
         {

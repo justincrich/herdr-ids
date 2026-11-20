@@ -70,7 +70,7 @@ export default class Pane extends View {
   // the same one the terminal area opens.
   menu(p, cx) {
     cx.stop_propagation();
-    openOverlay({ mod: "ids-menu", kind: "popup", width: 236, height: 300, props: { tab: "pane", target: { pane: p.pane, terminal: p.terminal } } });
+    openOverlay({ mod: "ids-menu", kind: "popup", width: 236, props: { tab: "pane", target: { pane: p.pane, terminal: p.terminal } } });
   }
 
   button(t, id, icon, command, args) {
