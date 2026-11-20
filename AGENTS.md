@@ -71,7 +71,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, `Copy path (relative)`)
 - `choose()` handles `copy.ids` and `clipboard.copy` with `cx.write_to_clipboard(...)` plus a toast
 - `can(name, arg?)` reads `commands()`: an item whose command (or argument) the running app lacks is left out. It gates `pane.swap {target}`, `pane.move` and `tab.reassign`, which a stock release does not have
-- `["Move pane…", "pane.moves", {}]` before `Close pane` in the `pane` case; `choose()` reopens `ids-menu` with `{ tab: "pane-move", target: { pane } }`. `case "pane-move"` is `paneMoves()`: `Swap with <pane>` per other pane of the tab (`pane.swap {pane, target}`), `Move to tab <tab>` per other tab of the space (`pane.move {pane, tab}`), and `Move to new tab` (`pane.move {pane}`) when the tab keeps another pane
+- `["Move pane…", "pane.moves", {}]` before `Close pane` in the `pane` case; `choose()` swaps the open menu's list to `tab: "pane-move"` in place (`this.sub`, read through `shown()`), so the same popup keeps its spot and the keyboard. `case "pane-move"` is `paneMoves()`: `Swap with <pane>` per other pane of the tab (`pane.swap {pane, target}`), `Move to tab <tab>` per other tab of the space (`pane.move {pane, tab}`), and `Move to new tab` (`pane.move {pane}`) when the tab keeps another pane
 
 **`mods/ids-agents/main.js`**
 - import `notify`
@@ -108,7 +108,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - the label, in order: the pane's own name (`shared("ids.paneNames")`), the name the terminal was started with (`terminals().find(t => t.address === p.terminal)?.name`, which runners set with `hc run --name`), the agent's own title when it tells you what it is doing (`tells`/`cleanTitle` in `abbr.js`), else the shipped program-name logic
 - `tagOf(p.cwd)` follows the name in dim text: the project under `Projects/`, abbreviated to three letters (`herdr-ids` → `hid`)
 - `rename(p, cx)` opens `ids-rename` with `{ pane, current }`: from a double-click on the name, from a pen button on hover (`mods/workspace-chrome/square-pen.svg`), and from `nextCommand()` for the copy whose pane is `focused()?.pane`
-- `menu(p, cx)` opens `ids-menu` (`kind: "popup"`, 236×300, props `{ tab: "pane", target }`) on a right-click anywhere on the header, so the pane menu works there too
+- `menu(p, cx)` opens `ids-menu` (`kind: "popup"`, 236 wide, sized to its items, props `{ tab: "pane", target }`) on a right-click anywhere on the header, so the pane menu works there too
 - the pane names come from `shared("ids.paneNames")`; `setShared` re-renders every copy, so a rename shows at once
 
 **`mods/ids-rename/main.js`** (new)

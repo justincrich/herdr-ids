@@ -225,9 +225,21 @@ export default class Menu extends View {
       });
   }
 
+  // The props this menu shows: "Move pane…" swaps the list in place, so the
+  // same popup, at the same spot, keeps the keyboard.
+  shown() {
+    const p = props();
+    return this.sub ? { ...p, tab: this.sub } : p;
+  }
+
   choose(i, cx) {
-    const it = items(props(), this.git)[i];
+    const it = items(this.shown(), this.git)[i];
     if (!it) return;
+    if (it[1] === "pane.moves") {
+      this.sub = "pane-move";
+      this.at = 0;
+      return cx.notify();
+    }
     closeOverlay(props()?.overlay);
     if (it[1] === "copy.ids") {
       const text = idsText(props());
@@ -247,16 +259,13 @@ export default class Menu extends View {
         props: { pane: tg.pane, current: paneNames()[tg.pane] ?? "" },
       });
     }
-    if (it[1] === "pane.moves") {
-      return openOverlay({ mod: "ids-menu", kind: "popup", width: 236, props: { tab: "pane-move", target: { pane: props()?.target?.pane } } });
-    }
     if (it[1] === "worktree") openOverlay({ mod: "worktree", kind: "dialog", ...(it[2].action === "open" ? { width: 560, height: 480 } : { width: 440, height: 260 }), props: it[2] });
     else run(it[1], it[2]);
   }
 
   render(cx) {
     const t = theme();
-    const list = items(props(), this.git);
+    const list = items(this.shown(), this.git);
     return v_flex()
       .id("menu")
       .track_focus(this.handle)
