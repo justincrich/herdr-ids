@@ -88,10 +88,9 @@ def run(argv, *, data=None, timeout=30, env=None):
                     kind = "unavailable"
             except (ValueError, AttributeError):
                 pass
-        raise DeploymentError(
-            kind,
-            f"{argv[0]} exited {p.returncode}: {p.stderr.decode(errors='replace')[-2000:]}",
-        )
+        # herdr-app do reports its error on stdout, so keep that when stderr is empty.
+        detail = (p.stderr or p.stdout).decode(errors="replace")[-2000:]
+        raise DeploymentError(kind, f"{argv[0]} exited {p.returncode}: {detail}")
     return p.stdout
 
 
@@ -547,7 +546,13 @@ def refresh(config, before):
             ("focused_pane", "pane.focus", "pane"),
         ):
             if before.get(key):
-                json_run(["herdr-app", "do", command, "--" + arg, before[key]], env=env)
+                # Putting the person back where they were is a courtesy: a space, tab
+                # or pane closed since `before` was taken must not wedge a recovery.
+                try:
+                    json_run(["herdr-app", "do", command, "--" + arg, before[key]], env=env)
+                except DeploymentError as error:
+                    if error.kind != "command_failed":
+                        raise
     finally:
         temporary.unlink(missing_ok=True)
 
