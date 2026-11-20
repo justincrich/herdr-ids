@@ -566,8 +566,12 @@ def verify_client(state, config, receipt=None):
     check_files(app_home(config), {name: digest(data) for name, data in files.items()})
     env = client_env(config)
     status = json_run(["herdr-app", "status"], env=env)
-    if status.get("errors"):
-        raise RuntimeError(f"window load errors: {status['errors']}")
+    # Only an error the activation brought fails it: one already showing before
+    # (an offline machine's layout) says nothing about these packages.
+    known = set(receipt.get("known_errors", []))
+    errors = [e for e in status.get("errors", []) if e not in known]
+    if errors:
+        raise RuntimeError(f"window load errors: {errors}")
     terminal = json_run(["hc", "get", receipt["terminal"], "--json"], env=env)
     if terminal.get("state") != "live" or terminal.get("name") != "chief-staff":
         raise RuntimeError("Chief of Staff terminal is not live")
@@ -668,6 +672,7 @@ def activate(state, config, request):
                 "previous_release": current.get("release"),
                 "activation": "activated",
                 "activated_at": time.time(),
+                "known_errors": before.get("errors", []),
             }
             # Let real file watchers/attach settle, checking structured errors.
             deadline = time.monotonic() + 8
