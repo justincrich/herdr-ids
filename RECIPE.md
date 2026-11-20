@@ -10,6 +10,8 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 
 - **Copy IDs** is the first item on the space, tab, and pane right-click menus.
 - **Rename pane** is the second item on a pane's right-click menu — the menu opens on the terminal area and on the pane's header. Double-clicking a pane's name, or the pen button in its header, does the same.
+- **Move pane…** on a pane's right-click menu opens a second menu: **Swap with** each other pane of its tab, **Move to tab** each other tab of its space, and **Move to new tab** when its tab keeps another pane. Items the running app cannot do are left out.
+- Dragging a pane's grip onto the tab bar puts it in the tab under the target the app draws there, or in a new tab past the last one.
 - Every pane header reads `Name Fix [hid]`: the pane's name, then the tag of the project it is in.
 - Right-clicking an agent row in the Agents sidebar opens a popup with **Copy IDs**, **Copy terminal address**, and **Copy agent session** (when the agent reports one).
 - The Agents sidebar has two orders, chosen from the button beside its tab: **Grouped by device and space** — a quiet heading per machine, then a heading per space — and **Priority** — Needs you, Done, Working, Idle.
@@ -92,4 +94,6 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking a pane shows **Copy IDs** first and **Rename pane** second; saving a name shows it in that pane's header and in the copied block, and saving an empty one puts the program's title back.
 - In **Grouped by device and space**, every machine with a row has a device heading above its space headings, and folding a device hides its spaces.
 - A live non-shell terminal on another machine that reports no status still has a row, and clicking it opens that pane.
+- **Move pane…** → **Swap with**, **Move to tab** and **Move to new tab** each move the pane, keep its terminal running, and keep its name; on an app without `pane.move` only the swaps show.
+- Dragging a pane onto the tab bar lands it in that tab or a new one, and the tab it left closes when it held only that pane.
 - `herdr-app status` reports no mod errors.

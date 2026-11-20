@@ -70,6 +70,8 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - `["Rename pane", "pane.rename", {}]` second in the `pane` case; `choose()` handles it by opening `ids-rename` with `{ pane, current }`
 - `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, `Copy path (relative)`)
 - `choose()` handles `copy.ids` and `clipboard.copy` with `cx.write_to_clipboard(...)` plus a toast
+- `can(name, arg?)` reads `commands()`: an item whose command (or argument) the running app lacks is left out. It gates `pane.swap {target}`, `pane.move` and `tab.reassign`, which a stock release does not have
+- `["Move pane…", "pane.moves", {}]` before `Close pane` in the `pane` case; `choose()` reopens `ids-menu` with `{ tab: "pane-move", target: { pane } }`. `case "pane-move"` is `paneMoves()`: `Swap with <pane>` per other pane of the tab (`pane.swap {pane, target}`), `Move to tab <tab>` per other tab of the space (`pane.move {pane, tab}`), and `Move to new tab` (`pane.move {pane}`) when the tab keeps another pane
 
 **`mods/ids-agents/main.js`**
 - import `notify`
@@ -86,6 +88,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 **`mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar`**
 - `mod: "menu"` becomes `mod: "ids-menu"`
 - `ids-tabs` draws Back and Forward after the tab strip, before `+`: they step `pane.focus` through the panes that recently took focus. The history is the view's own `trail` (pane ids, oldest first) with `at` as the cursor, recorded from `focused()?.pane` each render and pruned against `panes()`. The glyphs are `ids-icons/arrow-left.svg` and `arrow-right.svg` — tailed arrows, not chevrons, which at that spot read as a tab scroller — copied in by `install.sh`. An enabled arrow is `muted`; one with nowhere to go is `dim` and carries no `on_click`, so a closed pane never reaches the command
+- `ids-tabs` selects a tab only when the press and the release are on the same chip: a release with no press on a chip is a pane the app is dropping on the bar. Dropping a tab on another's middle runs `tab.merge` only when `commands()` has it, else `tab.move`
 
 **`mods/ids-sidebar/main.js`** (new)
 - the stack header that draws one tab per sidebar view; clicking calls `layout.select {stack, child}`
@@ -117,6 +120,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - root `terminal_menu: "ids-menu"`
 - blocks reference `ids-spaces`, `ids-agents`, `ids-tabs`, `ids-files` (and `ids-terminals-bar` in `terminals-ids.json`)
 - the pane header is `ids-pane` in `main-ids.json` and `ids-terminals-pane` in `terminals-ids.json`
+- the `tabs` block carries `"drop_pane": true` in both layouts: a pane dragged onto the bar joins a tab, or opens a new one past the last. An app without the field ignores it
 - the sidebar's `sidebar-lists` is a `stack` with a `header` mod `ids-sidebar`; children are `agents` then `spaces`, `active` picks the default view
 
 ## Rebase on a new Herdr release

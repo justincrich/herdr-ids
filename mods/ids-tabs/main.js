@@ -1,6 +1,6 @@
 import { View, div, svg, image } from "gpui-kit";
 import { h_flex } from "gpui-base";
-import { spaces, panes, run, openOverlay, theme, window, layout, settings, focused } from "herdr";
+import { spaces, panes, run, openOverlay, theme, window, layout, settings, focused, commands } from "herdr";
 
 // How many panes the arrows remember.
 const TRAIL = 20;
@@ -128,10 +128,12 @@ export default class Tabs extends View {
         .on_mouse_down("left", (e, cx) => { cx.stop_propagation(); this.pressed = i; if (e.click_count === 2) run("tab.rename", { id: c.id }); })
         .on_mouse_up("left", (e) => {
           const from = this.pressed; this.pressed = null;
-          if (from === null || from === i) { run("tab.select", { id: c.id }); return; }
+          // A press that began off the chips (a pane dragged onto the bar) is the app's drop, not a click.
+          if (from === null) return;
+          if (from === i) { run("tab.select", { id: c.id }); return; }
           const w = e?.bounds?.width ?? 0, at = e?.local_position?.x ?? 0;
-          // The middle of a tab takes the dragged one's panes; its edges put it there.
-          if (w > 0 && at > w / 3 && at < (w * 2) / 3) run("tab.merge", { id: shown[from].id, into: c.id });
+          // The middle of a tab takes the dragged one's panes, where the app can merge; its edges put it there.
+          if (w > 0 && at > w / 3 && at < (w * 2) / 3 && commands().some(x => x.name === "tab.merge")) run("tab.merge", { id: shown[from].id, into: c.id });
           else run("tab.move", { id: shown[from].id, index: space.tabs.findIndex(x => x.id === c.id) + 1 });
         })
         .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ids-menu", kind: "popup", width: 200, props: { tab: "tab", target: { id: c.id, space: space.id } } }); })

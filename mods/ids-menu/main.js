@@ -5,7 +5,7 @@
 
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
-import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec, notify, shared } from "herdr";
+import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec, notify, shared, commands } from "herdr";
 
 const NAMES = "ids.paneNames";
 
@@ -13,6 +13,45 @@ const NAMES = "ids.paneNames";
 function paneNames() {
   const v = shared(NAMES);
   return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+}
+
+// Whether the running app has a command (and that argument): a build without
+// one never shows its item, so no row in this menu does nothing.
+function can(name, arg) {
+  const c = commands().find((x) => x.name === name);
+  return Boolean(c) && (!arg || c.args.some((a) => a.name === arg));
+}
+
+// A pane as its header names it: the name given here, the terminal's name,
+// the program, else its title.
+function paneLabel(p) {
+  const own = paneNames()[p.pane];
+  const t = p.terminal && terminals().find((x) => x.address === p.terminal);
+  return own || String(t?.name ?? "").trim() || p.program?.name || p.title || "pane";
+}
+
+// A tab as ids-tabs labels it.
+function tabLabel(c) {
+  const all = panes();
+  const program = all.find((p) => p.tab === c.id && p.program?.agent)?.program ?? all.find((p) => p.tab === c.id)?.program;
+  return /^tb\d+$/.test(c.name) ? program?.name ?? "Terminal" : c.name;
+}
+
+// Where a pane can go: beside its tab's other panes (a swap), into another tab
+// of its space, or out to a new tab when its tab keeps another pane.
+function paneMoves(paneId) {
+  const all = panes();
+  const pane = all.find((p) => p.pane === paneId);
+  if (!pane) return [];
+  const space = spaces().find((s) => (s.tabs ?? []).some((c) => c.id === pane.tab));
+  const mates = all.filter((p) => p.tab === pane.tab && p.pane !== paneId);
+  const tabs = (space?.tabs ?? []).filter((c) => c.id !== pane.tab);
+  const move = can("pane.move");
+  return [
+    ...(can("pane.swap", "target") ? mates.map((p) => [`Swap with ${paneLabel(p)}`, "pane.swap", { pane: paneId, target: p.pane }]) : []),
+    ...(move ? tabs.map((c) => [`Move to tab ${tabLabel(c)}`, "pane.move", { pane: paneId, tab: c.id }]) : []),
+    ...(move && mates.length ? [["Move to new tab", "pane.move", { pane: paneId }]] : []),
+  ];
 }
 
 // Where a space is now: its first terminal's live folder, else where it was made.
@@ -102,13 +141,16 @@ function items(p, git) {
             ]
           : []),
         ...(parent ? [[`Send back to ${parent.name || parent.address}`, "terminal.park", { terminal: term.address }]] : []),
+        ...(inTab && paneMoves(tg.pane).length ? [["Move pane…", "pane.moves", {}]] : []),
         ...(inTab ? [["Close pane", "pane.close", { pane: tg.pane }]] : []),
       ];
     }
+    case "pane-move":
+      return paneMoves(tg.pane);
     case "tab": {
       const here = spaces().find((s) => s.id === tg.space);
       const local = (s) => s.machine == null || s.machine === "";
-      const moves = here && local(here)
+      const moves = here && local(here) && can("tab.reassign")
         ? spaces().filter((s) => s.id !== here.id && local(s)).map((s) => [s.name, "tab.reassign", { id: tg.id, space: s.id }])
         : [];
       return [
@@ -151,7 +193,10 @@ function items(p, git) {
   }
 }
 
-function menuIcon(command) {
+function menuIcon(command, args) {
+  if (command === "pane.moves" || (command === "pane.move" && args?.tab)) return "mods/workspace-chrome/panel-right.svg";
+  if (command === "pane.move") return "mods/workspace-chrome/plus.svg";
+  if (command === "pane.swap") return "mods/workspace-chrome/layers.svg";
   const name = command.endsWith(".close") ? "x" : command.endsWith(".rename") ? "square-pen" : command.endsWith(".new") ? "plus" : command === "worktree" ? "git-branch" : command === "app.help" ? "terminal" : command === "app.theme" ? "settings" : command === "pane.split" ? "panel-right" : command === "pane.zoom" ? "square" : "terminal";
   return `mods/workspace-chrome/${name}.svg`;
 }
@@ -202,6 +247,9 @@ export default class Menu extends View {
         props: { pane: tg.pane, current: paneNames()[tg.pane] ?? "" },
       });
     }
+    if (it[1] === "pane.moves") {
+      return openOverlay({ mod: "ids-menu", kind: "popup", width: 236, props: { tab: "pane-move", target: { pane: props()?.target?.pane } } });
+    }
     if (it[1] === "worktree") openOverlay({ mod: "worktree", kind: "dialog", ...(it[2].action === "open" ? { width: 560, height: 480 } : { width: 440, height: 260 }), props: it[2] });
     else run(it[1], it[2]);
   }
@@ -228,7 +276,7 @@ export default class Menu extends View {
       .children(
         list.map((it, i) =>
           v_flex()
-            .when(i > 0 && (it[1].endsWith(".close") || it[1] === "app.help" || (it[1] === "app.theme" && list[i - 1][1] !== "app.theme")), el => el.child(div().mx(7).my(4).h(1).bg(t.border)))
+            .when(i > 0 && (it[1].endsWith(".close") || it[1] === "app.help" || (it[1] !== list[i - 1][1] && (it[1] === "app.theme" || it[1] === "pane.move"))), el => el.child(div().mx(7).my(4).h(1).bg(t.border)))
             .child(h_flex()
             .id(`mi-${i}`)
             .h(31)
@@ -241,7 +289,7 @@ export default class Menu extends View {
             .when(i === this.at, (el) => el.bg(t.selected))
             .hover((s) => s.bg(t.hover))
             .on_click((_e, cx) => this.choose(i, cx))
-            .child(svg(menuIcon(it[1])).size(14).flex_none().text_color(t.muted))
+            .child(svg(menuIcon(it[1], it[2])).size(14).flex_none().text_color(t.muted))
             .child(div().flex_1().child(it[0]))
             .child(div().text_size(11).text_color(t.dim).child(shortcut(it[1], it[2])))),
         ),
