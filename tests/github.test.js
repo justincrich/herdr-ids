@@ -71,6 +71,9 @@ beforeAll(() => {
   ok(["commit", "-m", "first"], work);
   ok(["remote", "add", "origin", bare], work);
   ok(["push", "-u", "origin", "main"], work);
+  // A real clone has origin/HEAD; `remote add` and `push` do not make one.
+  // Without it the detached-HEAD case passes with or without its guard.
+  ok(["remote", "set-head", "origin", "main"], work);
   ok(["push", "origin", "main:feat/one"], work);
   ok(["remote", "set-url", "origin", "https://github.com/o/r.git"], work);
 });
@@ -116,5 +119,15 @@ test("no page when GitHub cannot have it", async () => {
   // Origin not on GitHub.
   ok(["remote", "set-url", "origin", "https://gitlab.com/o/r.git"], work);
   expect(await page(git, { root: work, path: "README.md", dir: false })).toBeNull();
+  ok(["remote", "set-url", "origin", "https://github.com/o/r.git"], work);
+});
+
+test("the configured remote counts, not an insteadOf rewrite of it", async () => {
+  // A second GitHub account rewrites the SSH host per account. The repo is
+  // still on GitHub, so the row must still show: page() reads the raw config.
+  ok(["config", "url.git@github.com-work:o/r.git.insteadOf", "git@github.com:o/r.git"], work);
+  ok(["remote", "set-url", "origin", "git@github.com:o/r.git"], work);
+  expect(await page(git, { root: work, path: "README.md", dir: false })).toBe("https://github.com/o/r/blob/main/README.md");
+  ok(["config", "--unset", "url.git@github.com-work:o/r.git.insteadOf"], work);
   ok(["remote", "set-url", "origin", "https://github.com/o/r.git"], work);
 });
