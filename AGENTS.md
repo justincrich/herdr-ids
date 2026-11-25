@@ -45,9 +45,10 @@ reloading without restarting the app/core. Preserve unrelated checkout changes.
 
 | Path | Purpose |
 |---|---|
-| `mods/ids-menu/main.js` | every copy menu: `Copy IDs`, `Copy path`, `Copy path (relative)`, agent items |
+| `mods/ids-menu/main.js` | every copy menu: `Copy IDs`, `Copy path`, `Copy path (relative)`, `Copy GitHub URL`, agent items |
+| `mods/ids-menu/github.js` | the GitHub URL a file has at the current branch (`slug`, `page`); takes the git runner as its argument, imports nothing from `herdr` |
 | `mods/ids-agents/main.js` | Agents sidebar; right-click opens `ids-menu` with `tab: "agent"` |
-| `mods/ids-files/main.js` | Files panel; right-click opens `ids-menu` with `tab: "files"`; `TYPE`/`NAME` map a file to one glyph |
+| `mods/ids-files/main.js` | Files panel; right-click opens `ids-menu` with `tab: "files"` and `target: { path, root, dir, on }`; `TYPE`/`NAME` map a file to one glyph |
 | `mods/ids-files/icons/` | the glyph set (Lucide, ISC) and the licence; `install.sh` copies it to `<app home>/ids-icons` and writes each `-bold` copy |
 | `mods/ids-spaces`, `ids-tabs`, `ids-terminals-bar` | shipped panels whose menu open points at `ids-menu` |
 | `mods/ids-pane/main.js` | `main`'s pane header: shipped `pane` header + the pane's name, its project tag, a right-click menu |
@@ -68,7 +69,8 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 - the `idsText(p)` helper (builds the block from `terminals()`, `panes()`, `spaces()`)
 - `["Copy IDs", "copy.ids", {}]` first in the `pane`, `tab`, and `space` cases
 - `["Rename pane", "pane.rename", {}]` second in the `pane` case; `choose()` handles it by opening `ids-rename` with `{ pane, current }`
-- `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, `Copy path (relative)`)
+- `case "agent"` (Copy IDs, terminal address, agent session) and `case "files"` (copy path, `Copy path (relative)`, `Copy GitHub URL` once `this.git` answers)
+- `import { page } from "./github.js"`; for `tab: "files"`, the `init()` spawn sets `this.git` to the page URL, null when there is none; the `clipboard.copy` toast shows `args.body ?? label` so the URL row toasts the URL
 - `choose()` handles `copy.ids` and `clipboard.copy` with `cx.write_to_clipboard(...)` plus a toast
 - `can(name, arg?)` reads `commands()`: an item whose command (or argument) the running app lacks is left out. It gates `pane.swap {target}`, `pane.move` and `tab.reassign`, which a stock release does not have
 - `["Move pane…", "pane.moves", {}]` before `Close pane` in the `pane` case; `choose()` swaps the open menu's list to `tab: "pane-move"` in place (`this.sub`, read through `shown()`), so the same popup keeps its spot and the keyboard. `case "pane-move"` is `paneMoves()`: `Swap with <pane>` per other pane of the tab (`pane.swap {pane, target}`), `Move to tab <tab>` per other tab of the space (`pane.move {pane, tab}`), and `Move to new tab` (`pane.move {pane}`) when the tab keeps another pane
@@ -80,7 +82,7 @@ When re-copying a shipped mod from a new Herdr release, these are the lines to r
 
 **`mods/ids-files/main.js`**
 - import `openOverlay`
-- `.on_mouse_down("right", …)` on file rows: `openOverlay({ mod: "ids-menu", … props: { tab: "files", target: { path, root } } })`
+- `.on_mouse_down("right", …)` on file rows: `openOverlay({ mod: "ids-menu", … props: { tab: "files", target: { path, root, dir, on } } })`; `dir` and `on` are what the GitHub URL row is built from
 - `ICONS = "ids-icons"`, and `svg(glyph(icon, shown))` for the row glyph: `TYPE` (extension) and `NAME` (whole name) pick a silhouette, `TINT` gives each family its theme colour, `open` swaps `folder` for `folder-open`, and `shown` (the file being previewed) asks for the `-bold` copy plus the `selection` row and a semibold name
 - the header repeats the shown file's glyph and name, because the tree gives way to the preview
 - **Why `ids-icons`**: `svg()` reads from the app directory and refuses a path that resolves outside it. A linked `mods/ids-*` folder points back into this checkout, so `mods/ids-files/icons/x.svg` never loads — the whole panel loses its glyphs. `install.sh` copies the set to `<app home>/ids-icons` (and writes `<name>-bold.svg` with a 3 stroke, since a stroke width is part of the file). Same rule in `--copy` mode. After changing a glyph, re-run `install.sh`; the JS reloads on its own, the copied SVGs do not.

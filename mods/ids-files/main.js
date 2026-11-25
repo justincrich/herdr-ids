@@ -221,7 +221,7 @@ export default class Files extends View {
       out.push(h_flex().id(`file-${path}`).h(28).flex_none().pl(8 + depth * 18).pr(8).gap(7).items_center().rounded(7).cursor_pointer()
         .when(shown, el => el.bg(t.selection)).hover(s => s.bg(t.hover))
         .on_click((_e, cx) => entry.dir ? this.toggle(path, cx) : this.show(path, cx))
-        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ids-menu", kind: "popup", width: 200, props: { tab: "files", target: { path, root: this.root } } }); })
+        .on_mouse_down("right", (_e, cx) => { cx.stop_propagation(); openOverlay({ mod: "ids-menu", kind: "popup", width: 200, props: { tab: "files", target: { path, root: this.root, dir: entry.dir, on: this.on } } }); })
         .child(entry.dir ? svg(glyph(`chevron-${open ? "down" : "right"}`)).size(12).flex_none().text_color(t.dim) : div().w(12).flex_none())
         .child(svg(glyph(icon, shown)).size(14).flex_none().text_color(ink))
         .child(div().flex_1().min_w(0).truncate().when(shown, el => el.font_semibold().text_color(t.foreground)).child(entry.name))

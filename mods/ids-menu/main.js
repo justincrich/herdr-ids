@@ -6,6 +6,7 @@
 import { View, div, svg } from "gpui-kit";
 import { v_flex, h_flex } from "gpui-base";
 import { run, props, closeOverlay, openOverlay, theme, keys, terminals, spaces, panes, exec, notify, shared, commands } from "herdr";
+import { page } from "./github.js";
 
 const NAMES = "ids.paneNames";
 
@@ -180,6 +181,7 @@ function items(p, git) {
       return [
         ["Copy path", "clipboard.copy", { text: `${tg.root}/${tg.path}` }],
         ["Copy path (relative)", "clipboard.copy", { text: tg.path }],
+        ...(git ? [["Copy GitHub URL", "clipboard.copy", { text: git, body: git }]] : []),
       ];
     default:
       return [
@@ -218,9 +220,12 @@ export default class Menu extends View {
     const p = props();
     const space = p?.tab === "space" && spaces().find((s) => s.id === p.target?.id);
     const folder = space && place(space);
-    if (folder)
+    const files = p?.tab === "files" ? p.target : null;
+    if (files || folder)
       cx.spawn(async (cx) => {
-        this.git = await checkout(folder, space.machine).catch(() => null);
+        this.git = files
+          ? await page((args, cwd) => exec("git", args, { cwd, on: files.on }), { root: files.root, path: files.path, dir: files.dir }).catch(() => null)
+          : await checkout(folder, space.machine).catch(() => null);
         cx.notify();
       });
   }
@@ -248,7 +253,7 @@ export default class Menu extends View {
     }
     if (it[1] === "clipboard.copy") {
       cx.write_to_clipboard(it[2].text);
-      return notify({ title: "Copied", body: it[0], level: "success" });
+      return notify({ title: "Copied", body: it[2].body ?? it[0], level: "success" });
     }
     if (it[1] === "pane.rename") {
       const tg = props()?.target ?? {};

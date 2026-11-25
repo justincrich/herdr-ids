@@ -16,7 +16,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - Right-clicking an agent row in the Agents sidebar opens a popup with **Copy IDs**, **Copy terminal address**, and **Copy agent session** (when the agent reports one).
 - The Agents sidebar has two orders, chosen from the button beside its tab: **Grouped by device and space** — a quiet heading per machine, then a heading per space — and **Priority** — Needs you, Done, Working, Idle.
 - A live non-shell terminal on another machine shows in the Agents sidebar even when its program never reports a status. Clicking it opens its pane.
-- Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy path (relative)**.
+- Right-clicking a file or folder in the Files panel opens a popup with **Copy path** and **Copy path (relative)** — and, a moment after the menu opens, **Copy GitHub URL** when `origin`'s copy of the current branch holds it.
 - Each action shows a toast: **IDs copied** for the block, **Copied** for a single value.
 
 ## How it behaves
@@ -26,7 +26,9 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - On an agent it starts with `agent <app> · pane … · tab … · space …`, then the terminal block for that agent.
 - Remote terminals keep the machine-qualified form, e.g. `box/t7`, so the `hc read` line works from any machine that has the machine added.
 - Right-clicking an agent row opens the menu; it does not focus or open the agent.
-- Nothing is run and nothing is fetched; the only side effect is the clipboard write.
+- **Copy GitHub URL** copies `https://github.com/<owner>/<repo>/blob/<branch>/<path from the repo root>` — `tree` for a folder. The toast shows the start of the URL, cut short with an ellipsis. The link points at the branch, so it stays current until the branch is renamed or deleted.
+- The row shows when the path is on `origin`'s copy of the current branch as last fetched. An untracked file, a branch never pushed, a detached HEAD, or a repo whose `origin` is not on GitHub gets no row. A branch deleted or changed on GitHub since the last fetch can still get a row whose link opens a 404.
+- Four read-only `git` commands answer the GitHub row (the remote's URL, the branch, the panel folder's place in the repo, whether `origin` has the path), run on the machine the Files panel is showing. Nothing is fetched, nothing is written; the only side effect is the clipboard write.
 
 ## Agents on other machines
 
@@ -63,6 +65,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `layouts/main-ids.json` — a copy of the shipped `main` layout with `terminal_menu: "ids-menu"` and the spaces, agents, tabs and files blocks pointed at the `ids-*` mods.
 - `layouts/terminals-ids.json` — the same treatment for the `terminals` layout.
 - `mods/ids-menu/` — the context menu. `items()` returns the copy actions; `choose()` calls `cx.write_to_clipboard(...)` and `notify(...)`.
+- `mods/ids-menu/github.js` — `slug(remote)` and `page(git, { root, path, dir })`: the GitHub page a file has at the current branch, or null when `origin`'s copy of that branch does not hold the path. It takes the git runner as its argument and imports nothing from `herdr`, so the same code runs in the window and in the tests. A remote URL can carry a token; only `owner/repo` is kept.
 - `mods/ids-agents/` — the Agents sidebar, with a right-click that opens `ids-menu` with `tab: "agent"`.
 - `mods/ids-files/` — the Files panel, with a right-click that opens `ids-menu` with `tab: "files"`, and a glyph per file kind: `icons/` holds the set, `main.js` maps an extension or a whole name to one, and `install.sh` copies the set into `<app home>/ids-icons` because an SVG inside a symlinked `mods/ids-*` folder never loads (see **Watch out**).
 - `mods/ids-spaces/`, `mods/ids-tabs/`, `mods/ids-terminals-bar/` — the shipped sidebar and tab mods with their menu opens repointed to `ids-menu`. `ids-tabs` also carries Back and Forward at the end of the tabs: tailed arrows from `ids-icons`, joined as one stepper, stepping through the panes that recently took focus.
@@ -89,7 +92,7 @@ This file is the brief: `mods/` and `layouts/` beside it are one build of it. Re
 - `herdr-app check <home>/mods/ids-menu` passes, and so does each other `ids-*` mod.
 - Right-clicking a space shows **Copy IDs** first; pasting yields a block with the space id and an `hc read … --lines 200` line.
 - Right-clicking an agent row opens a popup with **Copy IDs**, **Copy terminal address**, and, when reported, **Copy agent session**.
-- Right-clicking a file shows **Copy path** and **Copy path (relative)**.
+- Right-clicking a file shows **Copy path** and **Copy path (relative)**; a file on `origin`'s copy of the branch also shows **Copy GitHub URL**, and choosing it copies the URL and shows the start of it in the toast. A folder gets `…/tree/<branch>/…`; an untracked file, a branch never pushed, a detached HEAD, or a non-GitHub `origin` shows no third row.
 - The Files panel shows a glyph on every row, a `folder-open` on an expanded folder, and the file you opened in a heavier glyph and semibold name.
 - Right-clicking a pane shows **Copy IDs** first and **Rename pane** second; saving a name shows it in that pane's header and in the copied block, and saving an empty one puts the program's title back.
 - In **Grouped by device and space**, every machine with a row has a device heading above its space headings, and folding a device hides its spaces.
